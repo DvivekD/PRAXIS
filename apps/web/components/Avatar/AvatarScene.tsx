@@ -1,8 +1,8 @@
 "use client";
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Environment, ContactShadows, Float, Edges, Line } from "@react-three/drei";
-import { Suspense, useRef, useState } from "react";
+import { OrbitControls, Environment, ContactShadows, Float, Edges, Line, Points, PointMaterial } from "@react-three/drei";
+import { Suspense, useRef, useState, useMemo } from "react";
 import * as THREE from "three";
 
 interface AbstractCoreProps {
@@ -80,123 +80,125 @@ function EngineeringCore({ analyserNode }: AbstractCoreProps) {
   );
 }
 
-// 2. Data: Explorable Data Pipeline Maze (Massive Network Graph)
+// 2. Data: Particle Data Stream (ETL Pipeline Simulation)
 function DataCore({ analyserNode, onInteract }: AbstractCoreProps) {
   const groupRef = useRef<THREE.Group>(null);
   const dataArray = useRef(new Uint8Array(128));
-  
-  // Track how many nodes have been fixed
-  const [fixedCount, setFixedCount] = useState(0);
+  const pointsRef = useRef<THREE.Points>(null);
 
-  // Generate deterministic but random-looking nodes spread over a huge area
-  const [nodes, setNodes] = useState(() => {
-    return Array.from({ length: 150 }).map((_, i) => ({
-      id: i,
-      position: [
-        (Math.random() - 0.5) * 40,
-        (Math.random() - 0.5) * 40,
-        (Math.random() - 0.5) * 40
-      ] as [number, number, number],
-      corrupted: Math.random() > 0.9 // ~10% corrupted
-    }));
-  });
-
-  // Generate lines connecting nearby nodes
-  const lines = useRef<{ start: [number, number, number], end: [number, number, number] }[]>([]);
-  if (lines.current.length === 0) {
-    const newLines = [];
-    for (let i = 0; i < nodes.length; i++) {
-      // Connect each node to 2 random other nodes to form a web
-      for (let j = 0; j < 2; j++) {
-        const target = nodes[Math.floor(Math.random() * nodes.length)];
-        newLines.push({ start: nodes[i].position, end: target.position });
-      }
+  // Generate particles
+  const particleCount = 2000;
+  const positions = useMemo(() => {
+    const pos = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 20; // x
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 20; // y
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 20; // z
     }
-    lines.current = newLines;
-  }
+    return pos;
+  }, []);
+
+  const velocities = useMemo(() => {
+    const vel = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount; i++) {
+      vel[i * 3] = (Math.random() - 0.5) * 0.05;
+      vel[i * 3 + 1] = (Math.random() - 0.5) * 0.05;
+      vel[i * 3 + 2] = (Math.random() - 0.5) * 0.05;
+    }
+    return vel;
+  }, []);
+
+  const [isScattered, setIsScattered] = useState(false);
 
   useFrame((state, delta) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.02; // slow rotation for massive scale
-      
+      groupRef.current.rotation.y += delta * 0.1;
+    }
+
+    if (pointsRef.current) {
+      const positionsAttr = pointsRef.current.geometry.attributes.position;
+      const posArray = positionsAttr.array as Float32Array;
+
       let intensity = 0;
       if (analyserNode) {
         analyserNode.getByteFrequencyData(dataArray.current);
         intensity = dataArray.current[0] / 255;
-      } else {
-        intensity = (Math.sin(state.clock.elapsedTime * 2) + 1) * 0.5 * 0.3;
       }
 
-      groupRef.current.children.forEach((child, i) => {
-        if (child.type === "Mesh") {
-          const mesh = child as THREE.Mesh;
-          mesh.position.y += Math.sin(state.clock.elapsedTime * 2 + i) * 0.002 * (1 + intensity * 2);
+      for (let i = 0; i < particleCount; i++) {
+        const i3 = i * 3;
+
+        if (isScattered) {
+          // Scatter outwards
+          posArray[i3] += velocities[i3] * (2 + intensity * 5);
+          posArray[i3 + 1] += velocities[i3 + 1] * (2 + intensity * 5);
+          posArray[i3 + 2] += velocities[i3 + 2] * (2 + intensity * 5);
+        } else {
+          // Flow towards center
+          const targetX = 0;
+          const targetY = 0;
+          const targetZ = 0;
+
+          const dx = targetX - posArray[i3];
+          const dy = targetY - posArray[i3 + 1];
+          const dz = targetZ - posArray[i3 + 2];
+
+          const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+          if (dist > 0.5) {
+             const speed = 0.02 * (1 + intensity * 2);
+             posArray[i3] += (dx / dist) * speed;
+             posArray[i3 + 1] += (dy / dist) * speed;
+             posArray[i3 + 2] += (dz / dist) * speed;
+          } else {
+             // Reset particle to outer bounds
+             posArray[i3] = (Math.random() - 0.5) * 20;
+             posArray[i3 + 1] = (Math.random() - 0.5) * 20;
+             posArray[i3 + 2] = (Math.random() - 0.5) * 20;
+          }
         }
-      });
+      }
+      positionsAttr.needsUpdate = true;
     }
   });
 
-  const handleNodeClick = (id: number, corrupted: boolean) => {
-    if (corrupted) {
-      setNodes(prev => prev.map(n => n.id === id ? { ...n, corrupted: false } : n));
-      const newCount = fixedCount + 1;
-      setFixedCount(newCount);
-      
-      if (onInteract) {
-        if (newCount >= 3) {
-          onInteract(`[VICTORY] All critical data pipelines realigned. Network stable.`);
-        } else {
-          onInteract(`Realigned corrupted data node cluster-${id}. (${3 - newCount} remaining)`);
-        }
+  const handleCoreClick = () => {
+    setIsScattered(!isScattered);
+    if (onInteract) {
+      if (!isScattered) {
+        onInteract(`[ACTION] Rerouting data streams... System instability detected.`);
+      } else {
+        onInteract(`[VICTORY] Data streams realigned. ETL Pipeline latency normalized.`);
       }
     }
   };
 
   return (
     <group ref={groupRef}>
-      {lines.current.map((line, i) => (
-        <Line 
-          key={i} 
-          points={[line.start, line.end]} 
-          color="#06b6d4" 
-          lineWidth={1} 
-          transparent 
-          opacity={0.15} 
-        />
-      ))}
-      {nodes.map((node) => (
-        <mesh 
-          key={node.id} 
-          position={node.position}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleNodeClick(node.id, node.corrupted);
-          }}
-          onPointerOver={(e) => {
-            e.stopPropagation();
-            document.body.style.cursor = node.corrupted ? 'crosshair' : 'pointer';
-          }}
-          onPointerOut={() => {
-            document.body.style.cursor = 'default';
-          }}
-        >
-          <boxGeometry args={[0.6, 0.6, 0.6]} />
-          <meshPhysicalMaterial 
-            color={node.corrupted ? "#ef4444" : "#06b6d4"} 
-            emissive={node.corrupted ? "#b91c1c" : "#0891b2"}
-            emissiveIntensity={node.corrupted ? 1.5 : 0.5}
-            transparent 
-            opacity={0.9}
-            roughness={0.1}
-            metalness={0.9}
+      <Points ref={pointsRef}>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            count={positions.length / 3}
+            array={positions}
+            itemSize={3}
           />
-        </mesh>
-      ))}
+        </bufferGeometry>
+        <PointMaterial
+          transparent
+          vertexColors={false}
+          size={0.15}
+          sizeAttenuation={true}
+          depthWrite={false}
+          color="#06b6d4"
+          opacity={0.8}
+        />
+      </Points>
       {/* Central Hub */}
-      <mesh>
-        <octahedronGeometry args={[3, 1]} />
+      <mesh onClick={handleCoreClick} onPointerOver={() => document.body.style.cursor = 'pointer'} onPointerOut={() => document.body.style.cursor = 'default'}>
+        <octahedronGeometry args={[2, 2]} />
         <meshPhysicalMaterial color="#020202" metalness={0.9} roughness={0.1} transparent opacity={0.8} />
-        <Edges scale={1} threshold={15} color="#06b6d4" />
+        <Edges scale={1} threshold={15} color={isScattered ? "#ef4444" : "#06b6d4"} />
       </mesh>
     </group>
   );

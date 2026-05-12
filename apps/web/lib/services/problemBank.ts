@@ -9,7 +9,7 @@ export interface GeneratedProblem {
   mutationSeed: number;
   setupCode?: string;
   agentPrompt?: string;
-  skinType: "ide" | "roleplay";
+  skinType: "ide" | "roleplay" | "inbox";
   title: string;
 }
 
@@ -230,7 +230,9 @@ export class ProblemBank {
     }
 
     // Determine skin type
-    const skinType: "ide" | "roleplay" = ("setupCode" in base && base.setupCode) ? "ide" : "roleplay";
+    let skinType: "ide" | "roleplay" | "inbox" = "roleplay";
+    if ("setupCode" in base && base.setupCode) skinType = "ide";
+    if (domain === "product") skinType = "inbox";
 
     return {
       domain,

@@ -36,7 +36,7 @@ function SeekerDashboardContent() {
       "Client churn risk: Save a key account after a major service disruption.",
       "Channel partnership: Structure a new revenue-sharing agreement with a Tier-1 partner."
     ]},
-    product: { label: "Product", skin: "roleplay", accent: "#818cf8", scenarios: [
+    product: { label: "Product", skin: "inbox", accent: "#818cf8", scenarios: [
       "Strategic pivot: Redefine the pricing model after a competitor's aggressive move.",
       "Roadmap prioritization: Balance technical debt vs. high-growth feature requests.",
       "Product-Market Fit: Analyze user feedback to define the MVP for a new AI vertical."
