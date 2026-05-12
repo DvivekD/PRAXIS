@@ -27,13 +27,19 @@ export default function LoginPage() {
 
     if (role === "company") {
       try {
-        const result = await companyLoginAction(email, password);
-        if (result.success) {
-          router.push("/company/dashboard");
-        } else {
-          setError(result.error || "Login failed");
-          setLoading(false);
-        }
+        // Commented out to bypass backend checks completely for now
+        // const result = await companyLoginAction(email, password);
+        // if (result.success) {
+        //   router.push("/company/dashboard");
+        // } else {
+        //   setError(result.error || "Login failed");
+        //   setLoading(false);
+        // }
+
+        // Force bypass
+        const mockId = email === "admin@closerhq.com" ? "closerhq-mock-id" : "techforge-mock-id";
+        document.cookie = `praxis_company_id=${mockId}; path=/`;
+        router.push("/company/dashboard");
       } catch (e) {
         // Final fallback: if backend fails, just force mock for the demo
         document.cookie = "praxis_company_id=techforge-mock-id; path=/";

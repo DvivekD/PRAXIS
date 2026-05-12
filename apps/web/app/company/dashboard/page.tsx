@@ -6,7 +6,56 @@ import { motion } from "framer-motion";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Line } from "@react-three/drei";
 import * as THREE from "three";
-import { getCompanyProblemsAction, createProblemAction, getCompanyPipelineAction } from "../../../actions/company";
+// Commenting out backend calls to force mock bypass
+// import { getCompanyProblemsAction, createProblemAction, getCompanyPipelineAction } from "../../../actions/company";
+
+// Hardcoded mock functions for full bypass
+function getMockCompanyProblems(companyId: string) {
+  if (companyId === "techforge-mock-id") {
+    return {
+      success: true,
+      problems: [
+        { id: "tf-p1", title: "Distributed Cache Race Condition", domain: "engineering", description: "Fix the race condition in the memcached cluster..." },
+        { id: "tf-p2", title: "ETL Batch Processor Deadlock", domain: "data", description: "Resolve the locking issues in the Snowflake sync pipeline..." }
+      ]
+    };
+  } else if (companyId === "closerhq-mock-id") {
+    return {
+      success: true,
+      problems: [
+        { id: "chq-p1", title: "Enterprise Pricing Negotiation", domain: "sales", description: "Navigate an angry VP Procurement over price hikes..." },
+        { id: "chq-p2", title: "Feature Pivot Crisis", domain: "product", description: "Communicate dropping the analytics dashboard to the top client..." }
+      ]
+    };
+  }
+  return { success: true, problems: [] };
+}
+
+function getMockCompanyPipeline(companyId: string) {
+  return {
+    success: true,
+    pipeline: [
+      {
+        id: "mock-sess-1",
+        candidateName: "Alex Chen",
+        problemTitle: companyId === "techforge-mock-id" ? "Distributed Cache Race Condition" : "Enterprise Pricing Negotiation",
+        domain: companyId === "techforge-mock-id" ? "engineering" : "sales",
+        cognitiveScore: 92,
+        resolutionTurns: 4,
+        processSignals: { "approachQuality": 95, "errorRecovery": 90 }
+      },
+      {
+        id: "mock-sess-2",
+        candidateName: "Sarah Jenkins",
+        problemTitle: companyId === "techforge-mock-id" ? "ETL Batch Processor Deadlock" : "Feature Pivot Crisis",
+        domain: companyId === "techforge-mock-id" ? "data" : "product",
+        cognitiveScore: 68,
+        resolutionTurns: 9,
+        processSignals: { "efficiency": 60, "communication": 75 }
+      }
+    ]
+  };
+}
 
 // Background 3D grid effect
 function CyberGrid() {
@@ -47,11 +96,15 @@ export default function CompanyDashboard() {
 
   useEffect(() => {
     async function loadData() {
+      // Get companyId from cookie string
+      const match = document.cookie.match(/(^| )praxis_company_id=([^;]+)/);
+      const companyId = match ? match[2] : "techforge-mock-id";
+
       if (activeTab === "problems") {
-        const res = await getCompanyProblemsAction();
+        const res = getMockCompanyProblems(companyId);
         if (res.success) setProblems(res.problems || []);
       } else if (activeTab === "pipeline") {
-        const res = await getCompanyPipelineAction();
+        const res = getMockCompanyPipeline(companyId);
         if (res.success) setPipeline(res.pipeline || []);
       }
     }
@@ -59,18 +112,17 @@ export default function CompanyDashboard() {
   }, [activeTab]);
 
   const handleCreateProblem = async () => {
-    const res = await createProblemAction({
+    // Just mock it directly instead of backend
+    const mockProblem = {
+      id: "mock-" + Date.now(),
       domain, title, description, setupCode, agentPrompt
-    });
-    if (res.success) {
-      setProblems([res.problem, ...problems]);
-      setTitle("");
-      setDescription("");
-      setSetupCode("");
-      setAgentPrompt("");
-    } else {
-      alert("Failed to create problem: " + res.error);
-    }
+    };
+
+    setProblems([mockProblem, ...problems]);
+    setTitle("");
+    setDescription("");
+    setSetupCode("");
+    setAgentPrompt("");
   };
 
   const mockModel = {
