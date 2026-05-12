@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Line } from "@react-three/drei";
@@ -10,7 +10,7 @@ import { getCompanyProblemsAction, createProblemAction, getCompanyPipelineAction
 
 // Background 3D grid effect
 function CyberGrid() {
-  const groupRef = React.useRef<THREE.Group>(null);
+  const groupRef = useRef<THREE.Group>(null);
   
   useFrame((state, delta) => {
     if (groupRef.current) {
@@ -29,7 +29,7 @@ function CyberGrid() {
   );
 }
 
-import React from "react";
+
 
 export default function CompanyDashboard() {
   const router = useRouter();

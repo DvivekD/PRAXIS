@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
+    "postinstall": "prisma generate --schema=apps/web/prisma/schema.prisma",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "test": "turbo test",

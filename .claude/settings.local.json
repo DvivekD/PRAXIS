@@ -32,7 +32,9 @@
       "Bash(vercel --version)",
       "PowerShell(gh auth *)",
       "PowerShell(git remote *)",
-      "PowerShell(git *)"
+      "PowerShell(git *)",
+      "PowerShell(vercel *)",
+      "PowerShell(npm config *)"
     ]
   }
 }
