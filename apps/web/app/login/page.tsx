@@ -123,13 +123,21 @@ export default function LoginPage() {
           <div style={{ fontSize: 10, color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>DEMO CREDENTIALS</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <div
-              onClick={() => { setEmail("admin@techforge.io"); setPassword("demo123"); setRole("company"); }}
+              onClick={() => { 
+                // Zero-DB bypass for demo
+                document.cookie = "praxis_company_id=techforge-mock-id; path=/";
+                router.push("/company/dashboard"); 
+              }}
               style={{ fontSize: 11, color: "#666", cursor: "pointer", padding: "4px 0" }}
             >
               <span style={{ color: "#00ff41" }}>▸</span> TechForge: admin@techforge.io / demo123 <span style={{ color: "#444" }}>(Eng + Data)</span>
             </div>
             <div
-              onClick={() => { setEmail("admin@closerhq.com"); setPassword("demo123"); setRole("company"); }}
+              onClick={() => { 
+                // Zero-DB bypass for demo
+                document.cookie = "praxis_company_id=closerhq-mock-id; path=/";
+                router.push("/company/dashboard"); 
+              }}
               style={{ fontSize: 11, color: "#666", cursor: "pointer", padding: "4px 0" }}
             >
               <span style={{ color: "#f59e0b" }}>▸</span> CloserHQ: admin@closerhq.com / demo123 <span style={{ color: "#444" }}>(Sales + Product)</span>

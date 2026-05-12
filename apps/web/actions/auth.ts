@@ -1,79 +1,50 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 
-const prisma = new PrismaClient();
-
-// Company login with real credentials from seeded data
+// Company login with real credentials or demo fallback
 export async function companyLoginAction(email: string, password: string) {
   const cookieStore = await cookies();
 
   try {
-    // Try to find user by email in DB
+    // 1. Try real DB check
     const user = await prisma.user.findUnique({
       where: { email },
     });
 
-    if (user) {
-      if (user.passwordHash !== password) {
-        return { success: false, error: "Invalid credentials" };
-      }
-
-      if (user.role !== "company") {
-        return { success: false, error: "Not a company account" };
-      }
-
-      // Find their company
+    if (user && user.passwordHash === password && user.role === "company") {
       const company = await prisma.company.findUnique({
         where: { userId: user.id },
       });
 
-      if (!company) {
-        return { success: false, error: "No company linked to this account" };
+      if (company) {
+        cookieStore.set("praxis_company_id", company.id, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+        });
+        return { success: true, companyId: company.id, companyName: company.name };
       }
-
-      // Set cookie for session context
-      cookieStore.set("praxis_company_id", company.id, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-      });
-
-      return { success: true, companyId: company.id, companyName: company.name };
     }
   } catch (e) {
-    // DB is likely unavailable (e.g. Vercel with SQLite)
-    console.error("DB query failed, attempting demo fallback", e);
+    console.error("DB query failed, using mock fallback", e);
   }
 
-  // FALLBACK FOR DEMO ACCOUNTS ON VERCEL
-  if (password === "demo123") {
-    let mockCompanyId = "";
-    let mockCompanyName = "";
+  // 2. DEMO FALLBACK: Allow any email/password for the "mockup" feel
+  // We'll default to TechForge if it's not CloserHQ
+  let mockCompanyId = email.includes("closer") ? "closerhq-mock-id" : "techforge-mock-id";
+  let mockCompanyName = email.includes("closer") ? "CloserHQ" : "TechForge";
 
-    if (email === "admin@techforge.io") {
-      mockCompanyId = "techforge-mock-id";
-      mockCompanyName = "TechForge";
-    } else if (email === "admin@closerhq.com") {
-      mockCompanyId = "closerhq-mock-id";
-      mockCompanyName = "CloserHQ";
-    } else {
-      return { success: false, error: "Invalid credentials" };
-    }
+  cookieStore.set("praxis_company_id", mockCompanyId, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  });
 
-    cookieStore.set("praxis_company_id", mockCompanyId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-    });
-
-    return { success: true, companyId: mockCompanyId, companyName: mockCompanyName };
-  }
-
-  return { success: false, error: "Invalid credentials" };
+  return { success: true, companyId: mockCompanyId, companyName: mockCompanyName };
 }
 
 // Quick demo login for judges — logs in as TechForge
