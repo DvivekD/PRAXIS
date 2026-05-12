@@ -138,9 +138,9 @@ export default function LoginPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <div
               onClick={() => { 
-                // Zero-DB bypass for demo
+                setLoading(true);
                 document.cookie = "praxis_company_id=techforge-mock-id; path=/";
-                router.push("/company/dashboard"); 
+                window.location.href = "/company/dashboard"; 
               }}
               style={{ fontSize: 11, color: "#666", cursor: "pointer", padding: "4px 0" }}
             >
@@ -148,9 +148,9 @@ export default function LoginPage() {
             </div>
             <div
               onClick={() => { 
-                // Zero-DB bypass for demo
+                setLoading(true);
                 document.cookie = "praxis_company_id=closerhq-mock-id; path=/";
-                router.push("/company/dashboard"); 
+                window.location.href = "/company/dashboard"; 
               }}
               style={{ fontSize: 11, color: "#666", cursor: "pointer", padding: "4px 0" }}
             >

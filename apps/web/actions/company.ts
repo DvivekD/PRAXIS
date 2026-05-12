@@ -15,6 +15,11 @@ export async function getCompanyProblemsAction() {
   try {
     const companyId = await getCompanyId();
 
+    // PRIORITIZE MOCK CHECK to avoid DB timeout hangs for demo
+    if (companyId.includes("-mock-id")) {
+      return getMockCompanyProblems(companyId);
+    }
+
     try {
       const problems = await prisma.problem.findMany({
         where: { companyId },
@@ -22,7 +27,6 @@ export async function getCompanyProblemsAction() {
       });
       return { success: true, problems };
     } catch (dbError) {
-      // DB unavailable (e.g. Vercel with SQLite)
       console.warn("DB query failed, using mock problems data");
       return getMockCompanyProblems(companyId);
     }
@@ -40,6 +44,12 @@ export async function createProblemAction(data: {
 }) {
   try {
     const companyId = await getCompanyId();
+
+    // Prevent saving if it's a mock session (or just return success for demo)
+    if (companyId.includes("-mock-id")) {
+      return { success: true, problem: { ...data, id: "new-mock-" + Date.now() } };
+    }
+
     const problem = await prisma.problem.create({
       data: {
         ...data,
@@ -57,6 +67,11 @@ export async function getCompanyPipelineAction() {
   try {
     const companyId = await getCompanyId();
 
+    // PRIORITIZE MOCK CHECK to avoid DB timeout hangs for demo
+    if (companyId.includes("-mock-id")) {
+      return getMockCompanyPipeline(companyId);
+    }
+
     try {
       const sessions = await prisma.simulationSession.findMany({
         where: {
@@ -69,7 +84,6 @@ export async function getCompanyPipelineAction() {
         orderBy: { createdAt: "desc" },
       });
 
-      // Parse the state JSON to extract telemetry data
       const pipelineData = sessions.map(session => {
         let stateData: any = {};
         try {
