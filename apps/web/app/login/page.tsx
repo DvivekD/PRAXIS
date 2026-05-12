@@ -134,31 +134,39 @@ export default function LoginPage() {
 
         {/* Demo credentials */}
         <div style={{ marginTop: 28, padding: 16, border: "1px solid #1a1a1a", background: "#050505" }}>
-          <div style={{ fontSize: 10, color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>DEMO CREDENTIALS</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <div
+          <div style={{ fontSize: 10, color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>DEMO CREDENTIALS (CLICK_TO_BYPASS)</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <button
               onClick={() => { 
                 setLoading(true);
-                document.cookie = "praxis_company_id=techforge-mock-id; path=/";
-                window.location.href = "/company/dashboard"; 
+                document.cookie = "praxis_company_id=techforge-mock-id; path=/; max-age=3600";
+                window.location.replace("/company/dashboard"); 
               }}
-              style={{ fontSize: 11, color: "#666", cursor: "pointer", padding: "4px 0" }}
+              style={{ 
+                textAlign: "left", background: "transparent", border: "1px solid #1a1a1a", 
+                padding: "8px 12px", cursor: "pointer", color: "#666", fontSize: 11,
+                fontFamily: "inherit", width: "100%"
+              }}
             >
               <span style={{ color: "#00ff41" }}>▸</span> TechForge: admin@techforge.io / demo123 <span style={{ color: "#444" }}>(Eng + Data)</span>
-            </div>
-            <div
+            </button>
+            <button
               onClick={() => { 
                 setLoading(true);
-                document.cookie = "praxis_company_id=closerhq-mock-id; path=/";
-                window.location.href = "/company/dashboard"; 
+                document.cookie = "praxis_company_id=closerhq-mock-id; path=/; max-age=3600";
+                window.location.replace("/company/dashboard"); 
               }}
-              style={{ fontSize: 11, color: "#666", cursor: "pointer", padding: "4px 0" }}
+              style={{ 
+                textAlign: "left", background: "transparent", border: "1px solid #1a1a1a", 
+                padding: "8px 12px", cursor: "pointer", color: "#666", fontSize: 11,
+                fontFamily: "inherit", width: "100%"
+              }}
             >
               <span style={{ color: "#f59e0b" }}>▸</span> CloserHQ: admin@closerhq.com / demo123 <span style={{ color: "#444" }}>(Sales + Product)</span>
-            </div>
+            </button>
             <div
               onClick={() => { setRole("candidate"); }}
-              style={{ fontSize: 11, color: "#666", cursor: "pointer", padding: "4px 0" }}
+              style={{ fontSize: 11, color: "#666", cursor: "pointer", padding: "4px 12px" }}
             >
               <span style={{ color: "#818cf8" }}>▸</span> Seeker: Click "Seeker" tab → Upload CV
             </div>
