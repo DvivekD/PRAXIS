@@ -1,6 +1,6 @@
 "use server";
 
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 import { problemBank, GeneratedProblem } from "../lib/services/problemBank";
 import { assignSegment, getSegmentModifiers } from "../lib/services/segmentation";
 import { observerNode, ProcessSignals, TelemetryData, DimensionalScores } from "../lib/agents/observer";
@@ -8,8 +8,6 @@ import { PersonaOrchestrator } from "../lib/agents/personas";
 import { evaluateSession, EvaluationReport } from "../lib/agents/evaluator";
 import { generateText } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
-
-const prisma = new PrismaClient();
 
 const ai = createOpenAI({
   apiKey: process.env.VERTEX_API_KEY || "YOUR_API_KEY",

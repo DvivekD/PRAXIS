@@ -34,7 +34,9 @@
       "PowerShell(git remote *)",
       "PowerShell(git *)",
       "PowerShell(vercel *)",
-      "PowerShell(npm config *)"
+      "PowerShell(npm config *)",
+      "PowerShell(Set-Content *)",
+      "PowerShell(New-Item *)"
     ]
   }
 }

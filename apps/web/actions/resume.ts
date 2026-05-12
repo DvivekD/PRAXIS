@@ -3,9 +3,7 @@
 import { generateObject } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { z } from "zod";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "../lib/prisma";
 
 // Use the local CLIProxy (Vertex AI wrapper)
 const vertexProxy = createOpenAI({
