@@ -1,0 +1,17 @@
+{
+  "name": "@praxis/shared-types",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "echo 'No types yet'",
+    "lint": "echo 'No linting yet'",
+    "typecheck": "echo 'No types yet'"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "praxis",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "turbo": "latest",
+    "typescript": "latest",
+    "prettier": "latest"
+  },
+  "packageManager": "pnpm@11.0.9",
+  "type": "module"
+}

@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(pnpm init *)",
+      "Bash(npm install *)",
+      "Bash(pnpm --version)",
+      "WebSearch",
+      "Bash(pnpm install *)",
+      "Bash(pnpm add *)",
+      "Bash(pnpm approve-builds *)",
+      "Bash(pip install *)",
+      "Bash(E2B_API_KEY=\"e2b_bfea291e503015d434532db1946c9160d176bd4b\" pytest tests/test_sandbox.py)",
+      "Bash(E2B_API_KEY=\"e2b_bfea291e503015d434532db1946c9160d176bd4b\" python -m pytest tests/test_sandbox.py)",
+      "Bash(python *)",
+      "Bash(Get-Command python *)",
+      "Bash(fl)",
+      "Bash(powershell *)",
+      "Bash(./.python/tools/python.exe -m venv venv)",
+      "Bash(./venv/Scripts/python.exe -m pip install fastapi uvicorn e2b langgraph langchain-openai langchain-core httpx websockets pytest)",
+      "Bash(E2B_API_KEY=\"e2b_bfea291e503015d434532db1946c9160d176bd4b\" ./venv/Scripts/python.exe -m pytest tests/test_sandbox.py)",
+      "Bash(E2B_API_KEY=\"e2b_bfea291e503015d434532db1946c9160d176bd4b\" ./venv/Scripts/python.exe -m pytest tests/test_sandbox.py -s)",
+      "Bash(./venv/Scripts/python.exe -m pip install kafka-python opentelemetry-api opentelemetry-sdk)",
+      "Bash(./venv/Scripts/python.exe -m pip install ecdsa)",
+      "Bash(./venv/Scripts/python.exe -m pip install locust websocket-client)",
+      "Bash(pnpm dev *)",
+      "Bash(npx next *)",
+      "Bash(pnpm *)",
+      "PowerShell(Stop-Process *)",
+      "PowerShell(pnpm *)",
+      "Bash(gh auth *)",
+      "Bash(vercel --version)",
+      "PowerShell(gh auth *)",
+      "PowerShell(git remote *)",
+      "PowerShell(git *)"
+    ]
+  }
+}

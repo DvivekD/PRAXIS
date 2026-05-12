@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id              String   @id @default(uuid())
+  email           String   @unique
+  passwordHash    String
+  role            String   // "candidate", "company", "referee"
+  fullName        String
+  cvData          String?  // Store parsed CV/Resume for AI Litmus test
+  createdAt       DateTime @default(now())
+  
+  company         Company?
+  simulations     SimulationSession[]
+  reputations     ReputationTestimony[]
+  outcomes        OutcomeRecord[]
+}
+
+model Company {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  industry        String?
+  evalWeights     String?  // JSON stringified
+  createdAt       DateTime @default(now())
+
+  problems        Problem[]
+  apprenticeships Apprenticeship[]
+  outcomes        OutcomeRecord[]
+}
+
+model Problem {
+  id              String   @id @default(uuid())
+  companyId       String
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  domain          String   // "engineering", "sales", "product", "data"
+  title           String
+  description     String
+  setupCode       String?  // For IDE domains
+  agentPrompt     String?  // For Roleplay domains
+  createdAt       DateTime @default(now())
+
+  simulations     SimulationSession[]
+}
+
+model SimulationSession {
+  id                String   @id @default(uuid())
+  candidateId       String
+  user              User     @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  domain            String
+  problemId         String?
+  problem           Problem? @relation(fields: [problemId], references: [id])
+  state             String   // JSON stringified chat and telemetry state
+  cognitiveScore    Float    @default(50.0)
+  completed         Boolean  @default(false)
+  createdAt         DateTime @default(now())
+}
+
+model ReputationTestimony {
+  id                  String   @id @default(uuid())
+  candidateId         String
+  user                User     @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  refereeEmail        String
+  relationship        String
+  observableOutcomes  String   // JSON stringified
+  cognitiveTraits     String   // JSON stringified
+  wouldWorkAgain      Boolean
+  createdAt           DateTime @default(now())
+}
+
+model Apprenticeship {
+  id              String   @id @default(uuid())
+  companyId       String
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  title           String
+  description     String
+  durationWeeks   Int
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+}
+
+model OutcomeRecord {
+  id                String   @id @default(uuid())
+  candidateId       String
+  user              User     @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  companyId         String
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  retentionMonths   Int
+  promoted          Boolean
+  performanceReview String   // JSON stringified
+  createdAt         DateTime @default(now())
+}
