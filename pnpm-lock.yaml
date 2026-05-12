@@ -8,9 +8,15 @@ importers:
 
   .:
     devDependencies:
+      '@prisma/client':
+        specifier: ^5.22.0
+        version: 5.22.0(prisma@5.22.0)
       prettier:
         specifier: latest
         version: 3.8.3
+      prisma:
+        specifier: ^5.22.0
+        version: 5.22.0
       turbo:
         specifier: latest
         version: 2.9.12
@@ -35,6 +41,9 @@ importers:
       '@praxis/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@prisma/client':
+        specifier: ^5.22.0
+        version: 5.22.0(prisma@5.22.0)
       '@react-three/drei':
         specifier: ^10.7.7
         version: 10.7.7(@react-three/fiber@9.6.1(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(three@0.184.0))(@types/react@19.2.14)(@types/three@0.184.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(three@0.184.0)
@@ -59,6 +68,9 @@ importers:
       next:
         specifier: latest
         version: 16.2.6(@opentelemetry/api@1.9.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      prisma:
+        specifier: ^5.22.0
+        version: 5.22.0
       react:
         specifier: latest
         version: 19.2.6
@@ -90,9 +102,6 @@ importers:
       '@praxis/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript-config
-      '@prisma/client':
-        specifier: ^5.22.0
-        version: 5.22.0(prisma@5.22.0)
       '@types/bcryptjs':
         specifier: ^3.0.0
         version: 3.0.0
@@ -105,9 +114,6 @@ importers:
       eslint:
         specifier: latest
         version: 10.3.0
-      prisma:
-        specifier: ^5.22.0
-        version: 5.22.0
       typescript:
         specifier: latest
         version: 6.0.3
