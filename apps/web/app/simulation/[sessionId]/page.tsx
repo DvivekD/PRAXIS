@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { sendMessageAction } from "../../../actions/eval";
+import PraxisInbox from "../../../components/PraxisInbox";
 import Editor from "@monaco-editor/react";
 
 const AvatarScene = dynamic(() => import("../../../components/Avatar/AvatarScene"), { ssr: false });
@@ -373,43 +374,14 @@ function SimulationContent() {
         {/* Tab Content */}
         <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
           {activeTab === "inbox" && (
-            <div style={{ flex: 1, padding: 24, overflowY: "auto", background: "#020202", display: "flex", flexDirection: "column", gap: 16 }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 8 }}>Internal Communications</div>
-
-              <div style={{ border: `1px solid ${theme.accent}40`, background: "#050505", padding: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>Taylor Brooks (CEO)</div>
-                    <div style={{ fontSize: 11, color: "#888" }}>To: Product Team</div>
-                  </div>
-                  <div style={{ fontSize: 11, color: "#555" }}>10:42 AM</div>
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: theme.accent, marginBottom: 12 }}>URGENT: Pricing Model Pivot</div>
-                <div style={{ fontSize: 13, color: "#ccc", lineHeight: 1.6 }}>
-                  Team, the board just approved our pivot to usage-based pricing. We need to roll this out by Q3.
-                  I know our largest enterprise client won't be happy, but we have to push through.
-                  Please prepare a migration strategy immediately.
-                </div>
-                <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
-                  <button onClick={() => { setActiveTab("chat"); setInput("Hi Taylor, I've reviewed the CEO's email regarding the pricing pivot..."); }} style={{ padding: "6px 12px", background: `${theme.accent}20`, border: `1px solid ${theme.accent}50`, color: theme.accent, cursor: "pointer", fontSize: 11, fontWeight: 700 }}>REPLY IN CHAT</button>
-                </div>
-              </div>
-
-              <div style={{ border: `1px solid #333`, background: "#050505", padding: 16, opacity: 0.8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>Sam Jenkins (VP Engineering)</div>
-                    <div style={{ fontSize: 11, color: "#888" }}>To: Product Team</div>
-                  </div>
-                  <div style={{ fontSize: 11, color: "#555" }}>09:15 AM</div>
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 12 }}>Re: Q3 Roadmap Feasibility</div>
-                <div style={{ fontSize: 13, color: "#ccc", lineHeight: 1.6 }}>
-                  Just a heads up, if we're doing the pricing pivot, we have to drop the new Analytics Dashboard from the Q3 roadmap.
-                  We don't have the engineering bandwidth to do both. We need a decision on this by Friday.
-                </div>
-              </div>
-            </div>
+            <PraxisInbox
+              themeAccent={theme.accent}
+              onReply={(subject) => {
+                setActiveTab("chat");
+                setInput(`Re: ${subject} - `);
+                inputRef.current?.focus();
+              }}
+            />
           )}
 
           {activeTab === "chat" && (
