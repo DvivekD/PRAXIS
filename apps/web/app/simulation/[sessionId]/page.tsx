@@ -123,6 +123,11 @@ function SimulationContent() {
 
   // Initialize session from state passed through localStorage or initial fetch
   useEffect(() => {
+    // Prime the speech synthesis engine on mount to fix Chrome loading bugs
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.getVoices();
+    }
+
     const stored = localStorage.getItem(`praxis_session_${sessionId}`);
     if (stored) {
       const state = JSON.parse(stored);
@@ -229,11 +234,20 @@ function SimulationContent() {
       }, currentState);
 
       if (domain === "sales" && typeof window !== "undefined" && "speechSynthesis" in window) {
+        // Ensure voices are loaded (Chrome bug workaround)
+        const voices = window.speechSynthesis.getVoices();
         window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(data.response);
-        utterance.rate = 1.05;
-        utterance.pitch = 0.95;
-        window.speechSynthesis.speak(utterance);
+
+        // Small delay helps bypass some browser autoplay restrictions when tied to an async event
+        setTimeout(() => {
+          const utterance = new SpeechSynthesisUtterance(data.response);
+          utterance.rate = 1.05;
+          utterance.pitch = 0.95;
+          // Try to pick a decent English voice if available
+          const preferredVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural')));
+          if (preferredVoice) utterance.voice = preferredVoice;
+          window.speechSynthesis.speak(utterance);
+        }, 50);
       }
 
       setMessages(prev => [...prev, {
