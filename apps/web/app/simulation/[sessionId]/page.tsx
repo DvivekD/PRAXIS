@@ -203,6 +203,21 @@ function SimulationContent() {
     turnStartTime.current = Date.now();
 
     try {
+      const currentState = {
+        messages,
+        cognitiveLoadScore: cognitiveLoad,
+        resolutionTurns: turns,
+        currentScenario: localStorage.getItem(`praxis_session_${sessionId}`) ? JSON.parse(localStorage.getItem(`praxis_session_${sessionId}`)!).currentScenario : "",
+        problemTitle: localStorage.getItem(`praxis_session_${sessionId}`) ? JSON.parse(localStorage.getItem(`praxis_session_${sessionId}`)!).problemTitle : "",
+        contextVariables: localStorage.getItem(`praxis_session_${sessionId}`) ? JSON.parse(localStorage.getItem(`praxis_session_${sessionId}`)!).contextVariables : {},
+        setupCode: codeContent,
+        agentPrompt: localStorage.getItem(`praxis_session_${sessionId}`) ? JSON.parse(localStorage.getItem(`praxis_session_${sessionId}`)!).agentPrompt : "",
+        skinType: skin,
+        dimensionalScores: dimensions,
+        processSignals: localStorage.getItem(`praxis_session_${sessionId}`) ? JSON.parse(localStorage.getItem(`praxis_session_${sessionId}`)!).processSignals : {},
+        activePersona: activePerson,
+      };
+
       const data = await sendMessageAction(sessionId, messageContent, {
         flightTimeVariance: Math.random() * 80 + 20,
         pauseCount: Math.floor(Math.random() * 4),
@@ -211,7 +226,7 @@ function SimulationContent() {
         backspaceRatio: Math.random() * 0.2,
         tabSwitchCount: Math.floor(Math.random() * 3),
         codeEditCount: skin === "ide" ? Math.floor(Math.random() * 5) : 0,
-      });
+      }, currentState);
 
       if (domain === "sales" && typeof window !== "undefined" && "speechSynthesis" in window) {
         window.speechSynthesis.cancel();

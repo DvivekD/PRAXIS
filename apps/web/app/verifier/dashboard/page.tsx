@@ -66,6 +66,26 @@ export default function VerifierDashboard() {
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 8 }}><span style={{ color: "#a1a1aa" }}>Error Recovery</span><span style={{ color: "#fff", fontWeight: 700 }}>88</span></div>
             </div>
 
+            <div style={{ border: "1px solid rgba(129, 140, 248, 0.3)", padding: 20, background: "rgba(129, 140, 248, 0.05)" }}>
+              <div style={{ fontSize: 11, color: "#818cf8", textTransform: "uppercase", marginBottom: 12, fontFamily: "'JetBrains Mono', monospace" }}>Trusted Curators Online</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  { name: "Dr. Sarah Miller", role: "Principal Engineer @ Google", status: "Available" },
+                  { name: "Marcus Thorne", role: "VP Engineering @ Stripe", status: "Reviewing" },
+                  { name: "Elena Rossi", role: "Sr. Product Lead @ Airbnb", status: "Available" }
+                ].map((c, i) => (
+                  <div key={i} style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <div style={{ width: 32, height: 32, background: "rgba(129, 140, 248, 0.2)", borderRadius: "50%", border: "1px solid #818cf8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>{c.name[0]}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12, color: "#fff", fontWeight: 600 }}>{c.name}</div>
+                      <div style={{ fontSize: 10, color: "#71717a" }}>{c.role}</div>
+                    </div>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: c.status === "Available" ? "#22c55e" : "#f59e0b" }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div style={{ border: "1px solid rgba(129, 140, 248, 0.3)", padding: 20, background: "rgba(129, 140, 248, 0.05)", flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
               {!verified ? (
                 <>

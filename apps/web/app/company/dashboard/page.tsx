@@ -118,6 +118,46 @@ export default function CompanyDashboard() {
       <div style={{ position: "relative", zIndex: 1, maxWidth: 1100, margin: "0 auto", padding: "40px 24px" }}>
         <motion.h1 initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ fontSize: 32, fontWeight: 800, marginBottom: 32, letterSpacing: "-0.02em", fontFamily: "'JetBrains Mono', monospace" }}>SYS_DASHBOARD</motion.h1>
 
+        {/* Executive Summary / Infographics */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 24, marginBottom: 40 }}>
+          <div style={{ padding: 24, border: "1px solid #00ff41", background: "rgba(0,255,65,0.02)" }}>
+            <div style={{ fontSize: 11, color: "#00ff41", textTransform: "uppercase", letterSpacing: "2px", marginBottom: 20, fontFamily: "'JetBrains Mono', monospace" }}>[ PERFORMANCE_DISTRIBUTION ]</div>
+            <div style={{ height: 160, display: "flex", alignItems: "flex-end", gap: 4 }}>
+              {[40, 65, 80, 95, 110, 140, 120, 90, 60, 45, 30].map((h, i) => (
+                <motion.div 
+                  key={i} 
+                  initial={{ height: 0 }} 
+                  animate={{ height: h }} 
+                  transition={{ duration: 1, delay: i * 0.05 }}
+                  style={{ flex: 1, background: i === 5 ? "#00ff41" : "rgba(0,255,65,0.2)", borderTop: i === 5 ? "2px solid #fff" : "none" }} 
+                />
+              ))}
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, fontSize: 10, color: "#555", fontFamily: "'JetBrains Mono', monospace" }}>
+              <span>LITMUS_FAIL</span>
+              <span>MEDIAN_TALENT</span>
+              <span>OUTLIER_GOD_TIER</span>
+            </div>
+          </div>
+          <div style={{ padding: 24, border: "1px solid #00ff41", background: "rgba(0,255,65,0.02)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div>
+              <div style={{ fontSize: 11, color: "#00ff41", textTransform: "uppercase", letterSpacing: "2px", marginBottom: 12, fontFamily: "'JetBrains Mono', monospace" }}>[ PREDICTIVE_IMPACT ]</div>
+              <div style={{ fontSize: 32, fontWeight: 900, color: "#fff", fontFamily: "'JetBrains Mono', monospace" }}>+$1.2M</div>
+              <div style={{ fontSize: 12, color: "#00ff41" }}>Estimated annual savings in mis-hire costs.</div>
+            </div>
+            <div style={{ marginTop: 20 }}>
+              <div style={{ fontSize: 10, color: "#666", marginBottom: 4 }}>RETENTION_DELTA</div>
+              <div style={{ height: 4, background: "#111", width: "100%" }}>
+                <motion.div initial={{ width: 0 }} animate={{ width: "78%" }} style={{ height: "100%", background: "#00ff41" }} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 9, color: "#00ff41" }}>
+                <span>TRADITIONAL: 42%</span>
+                <span>PRAXIS_ASSISTED: 78%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Tabs */}
         <div style={{ display: "flex", gap: 4, marginBottom: 32, background: "rgba(0,255,65,0.05)", borderRadius: 0, padding: 4, width: "fit-content", border: "1px solid #00ff41" }}>
           {(["pipeline", "problems", "model", "outcomes"] as const).map((tab) => (

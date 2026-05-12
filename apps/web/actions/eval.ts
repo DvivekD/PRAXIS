@@ -30,7 +30,8 @@ export async function getProblemsByDomainAction(domain: string) {
     });
     return { success: true, problems };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    // DB unavailable (e.g. Vercel with SQLite) — return empty
+    return { success: true, problems: [] };
   }
 }
 
@@ -44,18 +45,20 @@ export async function startSimulationAction(
   candidateId: string,
   problemId?: string
 ) {
-  // Ensure user exists
-  await prisma.user.upsert({
-    where: { id: candidateId },
-    update: {},
-    create: {
-      id: candidateId,
-      email: `${candidateId}@praxis.dev`,
-      passwordHash: "demo",
-      role: "candidate",
-      fullName: "Test Candidate",
-    },
-  });
+  // Ensure user exists (skip if DB unavailable)
+  try {
+    await prisma.user.upsert({
+      where: { id: candidateId },
+      update: {},
+      create: {
+        id: candidateId,
+        email: `${candidateId}@praxis.dev`,
+        passwordHash: "demo",
+        role: "candidate",
+        fullName: "Test Candidate",
+      },
+    });
+  } catch (e) { /* DB unavailable, proceed without persistence */ }
 
   // STEP 2: Segment the candidate
   const segment = assignSegment(baselineScore, domain);
@@ -66,19 +69,21 @@ export async function startSimulationAction(
 
   // Override with company problem if provided
   if (problemId) {
-    const companyProblem = await prisma.problem.findUnique({ where: { id: problemId } });
-    if (companyProblem) {
-      problem.scenario = companyProblem.description;
-      problem.title = companyProblem.title;
-      problem.contextVariables = {
-        ...problem.contextVariables,
-        companyTitle: companyProblem.title,
-        domain: companyProblem.domain,
-      };
-      if (companyProblem.setupCode) problem.setupCode = companyProblem.setupCode;
-      if (companyProblem.agentPrompt) problem.agentPrompt = companyProblem.agentPrompt;
-      problem.skinType = companyProblem.setupCode ? "ide" : "roleplay";
-    }
+    try {
+      const companyProblem = await prisma.problem.findUnique({ where: { id: problemId } });
+      if (companyProblem) {
+        problem.scenario = companyProblem.description;
+        problem.title = companyProblem.title;
+        problem.contextVariables = {
+          ...problem.contextVariables,
+          companyTitle: companyProblem.title,
+          domain: companyProblem.domain,
+        };
+        if (companyProblem.setupCode) problem.setupCode = companyProblem.setupCode;
+        if (companyProblem.agentPrompt) problem.agentPrompt = companyProblem.agentPrompt;
+        problem.skinType = companyProblem.setupCode ? "ide" : "roleplay";
+      }
+    } catch (e) { /* DB unavailable, use generated problem */ }
   }
 
   // Build initial opening message based on domain persona
@@ -97,7 +102,7 @@ export async function startSimulationAction(
       { role: "assistant", content: openingMessages[domain] || openingMessages.engineering },
     ],
     candidateTelemetry: {},
-    cognitiveLoadScore: 50,
+    cognitiveLoadScore: Math.floor(Math.random() * 30) + 30, // Start between 30-60
     resolutionTurns: 0,
     currentScenario: problem.scenario,
     problemTitle: problem.title,
@@ -114,7 +119,7 @@ export async function startSimulationAction(
       toolUsagePattern: [],
       stuckRecovery: false,
       escalationHandling: "unknown",
-      communicationClarity: 50,
+      communicationClarity: Math.floor(Math.random() * 40) + 30,
       structuredDebugging: false,
       edgeCaseConsideration: false,
       tradeoffArticulation: false,
@@ -122,30 +127,38 @@ export async function startSimulationAction(
       timeManagement: "unknown",
     } as ProcessSignals,
     dimensionalScores: {
-      approachQuality: Math.floor(Math.random() * 20) + 40,
-      efficiency: Math.floor(Math.random() * 20) + 40,
-      creativity: Math.floor(Math.random() * 20) + 40,
-      errorRecovery: Math.floor(Math.random() * 20) + 40,
-      beyondKnownAnswer: Math.floor(Math.random() * 20) + 40,
-      toolUtilization: Math.floor(Math.random() * 20) + 40,
-      communication: Math.floor(Math.random() * 20) + 40,
-      ambiguityHandling: Math.floor(Math.random() * 20) + 40,
+      approachQuality: Math.floor(Math.random() * 40) + 40,
+      efficiency: Math.floor(Math.random() * 40) + 40,
+      creativity: Math.floor(Math.random() * 40) + 40,
+      errorRecovery: Math.floor(Math.random() * 40) + 40,
+      beyondKnownAnswer: Math.floor(Math.random() * 40) + 40,
+      toolUtilization: Math.floor(Math.random() * 40) + 40,
+      communication: Math.floor(Math.random() * 40) + 40,
+      ambiguityHandling: Math.floor(Math.random() * 40) + 40,
     } as DimensionalScores,
     activePersona: persona,
   };
 
-  const sim = await prisma.simulationSession.create({
-    data: {
-      candidateId,
-      domain,
-      problemId: problemId || null,
-      state: JSON.stringify(initialState),
-      cognitiveScore: 50,
-      completed: false,
-    },
-  });
+  // Try to persist to DB, fallback to generated UUID
+  let sessionId: string;
+  try {
+    const sim = await prisma.simulationSession.create({
+      data: {
+        candidateId,
+        domain,
+        problemId: problemId || null,
+        state: JSON.stringify(initialState),
+        cognitiveScore: initialState.cognitiveLoadScore,
+        completed: false,
+      },
+    });
+    sessionId = sim.id;
+  } catch (e) {
+    // DB unavailable — generate a UUID-like ID for the session
+    sessionId = `demo-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  }
 
-  return { sessionId: sim.id, state: initialState, segment, problem };
+  return { sessionId, state: initialState, segment, problem };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -153,11 +166,30 @@ export async function startSimulationAction(
 // STEP 5: OBSERVE (Layer 1 + Layer 2 run simultaneously)
 // ═══════════════════════════════════════════════════════════════
 
-export async function sendMessageAction(sessionId: string, text: string, telemetry: TelemetryData) {
-  const sim = await prisma.simulationSession.findUnique({ where: { id: sessionId } });
-  if (!sim) throw new Error("Session not found");
+export async function sendMessageAction(sessionId: string, text: string, telemetry: TelemetryData, clientState?: any) {
+  let state: any;
+  let domain: string;
 
-  const state = JSON.parse(sim.state);
+  // Try loading from DB, fallback to client-provided state
+  try {
+    const sim = await prisma.simulationSession.findUnique({ where: { id: sessionId } });
+    if (sim) {
+      state = JSON.parse(sim.state);
+      domain = sim.domain;
+    } else {
+      throw new Error("Not found");
+    }
+  } catch (e) {
+    // DB unavailable — use client-provided state
+    if (!clientState) throw new Error("Session not found and no client state provided");
+    state = clientState;
+    domain = clientState.contextVariables?.domain || "engineering";
+    // Infer domain from scenario context
+    if (state.activePersona) {
+      const personaHints: Record<string, string> = { "Marcus": "engineering", "Priya": "engineering", "Jordan": "sales", "Diana": "sales", "Alex": "product", "Sam": "product", "Dr. Chen": "data", "Taylor": "data" };
+      domain = personaHints[state.activePersona?.name] || domain;
+    }
+  }
 
   // 1. Add user message
   state.messages.push({ role: "user", content: text });
@@ -177,9 +209,7 @@ export async function sendMessageAction(sessionId: string, text: string, telemet
   state.observerNotes.push(...observerOutput.observerNotes);
 
   // 3. LAYER 2: Persona orchestration
-  const orchestrator = new PersonaOrchestrator(sim.domain);
-
-  // Restore escalation levels from state if available
+  const orchestrator = new PersonaOrchestrator(domain);
   orchestrator.evaluateEscalation(text);
   orchestrator.selectNextSpeaker(text);
 
@@ -188,8 +218,6 @@ export async function sendMessageAction(sessionId: string, text: string, telemet
 
   // Build system prompt with full context
   let systemPrompt = orchestrator.getSystemPrompt();
-
-  // Inject scenario context
   systemPrompt += `\n\nSCENARIO CONTEXT:\n${state.currentScenario}\n`;
   if (state.contextVariables && Object.keys(state.contextVariables).length > 0) {
     systemPrompt += `Context variables: ${JSON.stringify(state.contextVariables)}\n`;
@@ -197,8 +225,6 @@ export async function sendMessageAction(sessionId: string, text: string, telemet
   if (state.agentPrompt) {
     systemPrompt += `\nADDITIONAL INSTRUCTIONS:\n${state.agentPrompt}\n`;
   }
-
-  // Inject observer notes for the AI to be aware of candidate behavior
   if (observerOutput.observerNotes.length > 0) {
     systemPrompt += `\n[INTERNAL — Observer Notes for calibrating response difficulty]:\n`;
     systemPrompt += observerOutput.observerNotes.map(n => `- ${n}`).join("\n");
@@ -210,36 +236,36 @@ export async function sendMessageAction(sessionId: string, text: string, telemet
     const { text: generatedText } = await generateText({
       model: ai("gemini-2.0-flash"),
       system: systemPrompt,
-      messages: state.messages.slice(-6), // Keep context window manageable
+      messages: state.messages.slice(-6),
     });
     aiContent = generatedText;
   } catch (e) {
     console.error("AI Generation failed, using fallback", e);
-    // Domain-specific fallbacks
     const fallbacks: Record<string, string> = {
       engineering: "Interesting approach. Can you walk me through the specific technical implementation? What happens under high concurrency?",
       sales: "I appreciate the enthusiasm, but I need more specifics. What concrete value can you demonstrate?",
       product: "That's a start, but what's the data backing this recommendation? What are the risks?",
       data: "Walk me through the query plan. Where do you think the bottleneck is?",
     };
-    aiContent = fallbacks[sim.domain] || "Can you elaborate on that approach?";
+    aiContent = fallbacks[domain] || "Can you elaborate on that approach?";
   }
 
   state.messages.push({ role: "assistant", content: aiContent });
   state.resolutionTurns += 1;
 
-  // Check completion (10 turns)
   const isComplete = state.resolutionTurns >= 10;
 
-  // 5. Save updated state
-  await prisma.simulationSession.update({
-    where: { id: sessionId },
-    data: {
-      state: JSON.stringify(state),
-      cognitiveScore: state.cognitiveLoadScore,
-      completed: isComplete,
-    },
-  });
+  // 5. Try to save updated state to DB
+  try {
+    await prisma.simulationSession.update({
+      where: { id: sessionId },
+      data: {
+        state: JSON.stringify(state),
+        cognitiveScore: state.cognitiveLoadScore,
+        completed: isComplete,
+      },
+    });
+  } catch (e) { /* DB unavailable, state lives in client */ }
 
   return {
     response: aiContent,

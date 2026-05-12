@@ -16,18 +16,50 @@ export default function SeekerDashboard() {
 function SeekerDashboardContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const domain = searchParams.get("domain") || "engineering";
+  const domainParam = searchParams.get("domain");
+  const domain = domainParam || "engineering"; // Default to engineering if nothing assigned
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [liveProblems, setLiveProblems] = useState<any[]>([]);
+  const [showJudgeMode, setShowJudgeMode] = useState(false);
+
+  // All available domains metadata
+  const domainMetadata: Record<string, any> = {
+    engineering: { label: "Engineering", skin: "ide", accent: "#00ff41", scenarios: [
+      "Critical system outage: Debug a distributed rate limiter causing cascaded failures.",
+      "Memory leak detected: Resolve an OOM issue in the high-throughput worker node.",
+      "Database deadlock: Optimize the locking strategy for the transaction ledger."
+    ]},
+    sales: { label: "Sales", skin: "roleplay", accent: "#f59e0b", scenarios: [
+      "High-stakes negotiation: Close an enterprise contract with a skeptical CTO.",
+      "Client churn risk: Save a key account after a major service disruption.",
+      "Channel partnership: Structure a new revenue-sharing agreement with a Tier-1 partner."
+    ]},
+    product: { label: "Product", skin: "roleplay", accent: "#818cf8", scenarios: [
+      "Strategic pivot: Redefine the pricing model after a competitor's aggressive move.",
+      "Roadmap prioritization: Balance technical debt vs. high-growth feature requests.",
+      "Product-Market Fit: Analyze user feedback to define the MVP for a new AI vertical."
+    ]},
+    data: { label: "Data", domain: "data", skin: "ide", accent: "#06b6d4", scenarios: [
+      "Data integrity crisis: Optimize a failing ETL pipeline dropping production records.",
+      "Query bottleneck: Resolve a 30s latency issue in the real-time analytics engine.",
+      "Pipeline migration: Sync petabyte-scale datasets across regional clusters."
+    ]},
+  };
+
+  const activeDomain = domainMetadata[domain.toLowerCase()] || domainMetadata.engineering;
 
   useEffect(() => {
     async function loadProblems() {
       setFetching(true);
-      const res = await getProblemsByDomainAction(domain);
-      if (res.success) {
-        setLiveProblems(res.problems || []);
+      try {
+        const res = await getProblemsByDomainAction(domain);
+        if (res.success) {
+          setLiveProblems(res.problems || []);
+        }
+      } catch (e) {
+        console.error("Failed to fetch live problems", e);
       }
       setFetching(false);
     }
@@ -72,88 +104,96 @@ function SeekerDashboardContent() {
           </div>
         ) : (
           <>
-            {/* Live company problems */}
-            {liveProblems.length > 0 && (
-              <div style={{ display: "grid", gap: 16, marginBottom: 32 }}>
-                {liveProblems.map((prob) => {
-                  const targetSkin = ["engineering", "data"].includes(prob.domain) ? "ide" : "roleplay";
-                  return (
-                    <motion.div
-                      key={prob.id}
-                      whileHover={{ scale: 1.01, borderColor: "#00ff41" }}
-                      style={{
-                        padding: 24,
-                        background: "rgba(0,255,65,0.02)",
-                        border: "1px solid #222",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
+            {/* Main Assignment Section */}
+            <div style={{ marginBottom: 40 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h2 style={{ fontSize: 14, color: activeDomain.accent, textTransform: "uppercase", letterSpacing: "1px", margin: 0 }}>
+                  &gt; ASSIGNED_PROBLEMS: {activeDomain.label.toUpperCase()}
+                </h2>
+                <div 
+                  onClick={() => setShowJudgeMode(!showJudgeMode)}
+                  style={{ fontSize: 11, color: "#666", cursor: "pointer", border: "1px solid #333", padding: "4px 8px" }}
+                >
+                  {showJudgeMode ? "[ HIDE_OTHER_DOMAINS ]" : "[ SWITCH_DOMAIN_OVERRIDE ]"}
+                </div>
+              </div>
+
+              {/* Judge Mode Override */}
+              {showJudgeMode && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 24, padding: 12, background: "rgba(255,255,255,0.03)", border: "1px dashed #333" }}>
+                  {Object.keys(domainMetadata).map(d => (
+                    <button 
+                      key={d}
+                      onClick={() => router.push(`/seeker/dashboard?domain=${d}`)}
+                      style={{ 
+                        padding: "8px", 
+                        background: domain === d ? domainMetadata[d].accent : "transparent",
+                        color: domain === d ? "#000" : domainMetadata[d].accent,
+                        border: `1px solid ${domainMetadata[d].accent}`,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        textTransform: "uppercase"
                       }}
                     >
-                      <div>
-                        <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
-                          <span style={{ fontSize: 11, padding: "2px 8px", border: "1px solid #00ff41", color: "#00ff41", textTransform: "uppercase" }}>
-                            {prob.company?.name || "UNKNOWN_CORP"}
-                          </span>
-                          <span style={{ fontSize: 11, color: "#00ff41" }}>[ {targetSkin.toUpperCase()} ]</span>
-                        </div>
-                        <h3 style={{ fontSize: 18, margin: 0, color: "#e4e4e7" }}>{prob.title}</h3>
-                      </div>
-                      <button
-                        onClick={() => handleStartSimulation(prob.id, targetSkin)}
-                        disabled={loading}
-                        style={{
-                          padding: "12px 24px",
-                          background: "transparent",
-                          color: "#00ff41",
-                          border: "1px solid #00ff41",
-                          cursor: loading ? "not-allowed" : "pointer",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          opacity: loading ? 0.5 : 1,
-                          fontFamily: "inherit",
-                        }}
-                      >
-                        Launch
-                      </button>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            )}
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-            {/* Quick Start — always available */}
-            <h2 style={{ fontSize: 14, color: "#666", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 16, marginTop: 24 }}>&gt; QUICK_START (Built-in Scenarios)</h2>
-            <div style={{ display: "grid", gap: 12 }}>
-              {[
-                { label: "Engineering", skin: "ide", desc: "Debug a distributed rate limiter", accent: "#00ff41" },
-                { label: "Sales", skin: "roleplay", desc: "Enterprise contract negotiation", accent: "#f59e0b" },
-                { label: "Product", skin: "roleplay", desc: "Pricing model pivot strategy", accent: "#818cf8" },
-                { label: "Data", skin: "ide", desc: "Optimize a failing ETL pipeline", accent: "#06b6d4" },
-              ].map((item) => (
-                <motion.div
-                  key={item.label}
-                  whileHover={{ scale: 1.01, borderColor: item.accent }}
-                  style={{ padding: 20, background: "#050505", border: "1px solid #1a1a1a", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
-                  onClick={async () => {
-                    setLoading(true);
-                    try {
-                      const result = await startSimulationAction(item.label.toLowerCase(), 50, "test-user-id");
-                      localStorage.setItem(`praxis_session_${result.sessionId}`, JSON.stringify(result.state));
-                      router.push(`/simulation/${result.sessionId}?skin=${item.skin}&domain=${item.label.toLowerCase()}`);
-                    } catch (e) { console.error(e); setLoading(false); }
-                  }}
-                >
-                  <div>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
-                      <span style={{ fontSize: 11, padding: "2px 6px", border: `1px solid ${item.accent}`, color: item.accent, textTransform: "uppercase" }}>{item.label}</span>
-                      <span style={{ fontSize: 11, color: "#555" }}>[ {item.skin.toUpperCase()} ]</span>
+              <div style={{ display: "grid", gap: 16 }}>
+                {/* 1. Show live problems if any */}
+                {liveProblems.map((prob) => (
+                  <motion.div
+                    key={prob.id}
+                    whileHover={{ scale: 1.01, borderColor: activeDomain.accent }}
+                    style={{ padding: 24, background: "#050505", border: `1px solid ${activeDomain.accent}40`, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
+                    onClick={() => handleStartSimulation(prob.id, activeDomain.skin)}
+                  >
+                    <div>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+                        <span style={{ fontSize: 10, padding: "2px 6px", border: `1px solid ${activeDomain.accent}`, color: activeDomain.accent, textTransform: "uppercase" }}>{prob.company?.name || "PARTNER_NODE"}</span>
+                        <span style={{ fontSize: 10, color: "#555" }}>[ {activeDomain.skin.toUpperCase()} ]</span>
+                      </div>
+                      <div style={{ fontSize: 16, color: "#fff", fontWeight: 700 }}>{prob.title}</div>
                     </div>
-                    <div style={{ fontSize: 14, color: "#aaa" }}>{item.desc}</div>
-                  </div>
-                  <div style={{ color: item.accent, fontSize: 12, fontWeight: 700 }}>▶</div>
-                </motion.div>
-              ))}
+                    <div style={{ color: activeDomain.accent, fontSize: 14, fontWeight: 900 }}>LAUNCH ▶</div>
+                  </motion.div>
+                ))}
+
+                {/* 2. Show generated variants for the domain */}
+                {activeDomain.scenarios.map((scenarioText: string, i: number) => (
+                  <motion.div
+                    key={i}
+                    whileHover={{ scale: 1.01, borderColor: activeDomain.accent }}
+                    style={{ padding: 24, background: "#050505", border: "1px solid #1a1a1a", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
+                    onClick={async () => {
+                      if (loading) return;
+                      setLoading(true);
+                      try {
+                        const result = await startSimulationAction(domain, 50, "test-user-id");
+                        localStorage.setItem(`praxis_session_${result.sessionId}`, JSON.stringify(result.state));
+                        router.push(`/simulation/${result.sessionId}?skin=${activeDomain.skin}&domain=${domain}`);
+                      } catch (e) {
+                        console.error(e);
+                        setLoading(false);
+                        alert("Simulation init failed. Please check network.");
+                      }
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+                        <span style={{ fontSize: 10, padding: "2px 6px", border: `1px solid ${activeDomain.accent}`, color: activeDomain.accent, textTransform: "uppercase" }}>GEN_NODE_{i+1}</span>
+                        <span style={{ fontSize: 10, color: "#555" }}>[ {activeDomain.skin.toUpperCase()} ]</span>
+                      </div>
+                      <div style={{ fontSize: 15, color: "#fff", marginBottom: 4, fontWeight: 700 }}>{scenarioText.split(":")[0]}</div>
+                      <div style={{ fontSize: 13, color: "#888" }}>{scenarioText.split(":")[1]}</div>
+                    </div>
+                    <div style={{ color: activeDomain.accent, fontSize: 14, fontWeight: 900 }}>{loading ? "..." : "INIT ▶"}</div>
+                  </motion.div>
+                ))}
+              </div>
             </div>
           </>
         )}

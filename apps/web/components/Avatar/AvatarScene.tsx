@@ -35,12 +35,14 @@ function OnboardingCore() {
 function EngineeringCore({ analyserNode }: AbstractCoreProps) {
   const outerRef = useRef<THREE.Mesh>(null);
   const innerRef = useRef<THREE.Mesh>(null);
+  const midRef = useRef<THREE.Mesh>(null);
   const dataArray = useRef(new Uint8Array(128));
 
   useFrame((state, delta) => {
-    if (outerRef.current && innerRef.current) {
+    if (outerRef.current && innerRef.current && midRef.current) {
       outerRef.current.rotation.y += delta * 0.4;
       outerRef.current.rotation.x += delta * 0.2;
+      midRef.current.rotation.z += delta * 0.6;
       innerRef.current.rotation.y -= delta * 0.8;
 
       let scaleOffset = 0;
@@ -49,7 +51,6 @@ function EngineeringCore({ analyserNode }: AbstractCoreProps) {
         const avg = dataArray.current.reduce((a, b) => a + b, 0) / dataArray.current.length;
         scaleOffset = (avg / 255) * 0.4;
       } else {
-        // Simulated breathing
         scaleOffset = Math.sin(state.clock.elapsedTime * 4) * 0.1;
       }
       
@@ -60,15 +61,21 @@ function EngineeringCore({ analyserNode }: AbstractCoreProps) {
 
   return (
     <Float speed={2} rotationIntensity={0.5} floatIntensity={1}>
-      <mesh ref={outerRef}>
-        <boxGeometry args={[1.8, 1.8, 1.8]} />
-        <meshPhysicalMaterial color="#000000" metalness={0.9} roughness={0.1} transparent opacity={0.6} />
-        <Edges scale={1} threshold={15} color="#00ff41" />
+      <group>
+        <mesh ref={outerRef}>
+          <boxGeometry args={[1.8, 1.8, 1.8]} />
+          <meshPhysicalMaterial color="#000000" metalness={0.9} roughness={0.1} transparent opacity={0.4} />
+          <Edges scale={1} threshold={15} color="#00ff41" />
+        </mesh>
+        <mesh ref={midRef}>
+          <octahedronGeometry args={[1.2, 0]} />
+          <meshBasicMaterial color="#00ff41" wireframe transparent opacity={0.3} />
+        </mesh>
         <mesh ref={innerRef}>
           <icosahedronGeometry args={[0.7, 1]} />
           <meshBasicMaterial color="#00ff41" wireframe />
         </mesh>
-      </mesh>
+      </group>
     </Float>
   );
 }
@@ -310,7 +317,7 @@ export default function AvatarScene({ analyserNode, domain = "engineering", onIn
 
   return (
     <div style={{ width: "100%", height: "100%", position: "relative", backgroundColor: "transparent", overflow: "hidden", boxShadow: "inset 0 0 20px rgba(0,0,0,0.5)" }}>
-      <Canvas camera={{ position: [0, 0, 7], fov: 45 }}>
+      <Canvas camera={{ position: [0, 0, 10], fov: 45 }}>
         <color attach="background" args={["#020202"]} />
         <ambientLight intensity={0.5} />
         <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={1} castShadow />
