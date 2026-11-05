@@ -8,9 +8,10 @@ import {
   VoiceAgentRole,
   base64ToArrayBuffer,
 } from "../../lib/voice/geminiLive";
+import { chatVoiceCompanionAction } from "../../actions/voice";
 
 export type VoiceSessionStatus = "disconnected" | "connecting" | "connected" | "error";
-export type VoiceSessionMode = "persona" | "guide";
+export type VoiceSessionMode = "persona" | "guide" | "interviewer";
 
 export interface TranscriptMessage {
   id: string;
@@ -322,6 +323,12 @@ export interface VoiceSessionHandle {
   switchEngine: (engine: "live" | "fallback") => void;
   /** Returns current active engine */
   getEngine: () => "live" | "fallback";
+  /** Toggles between guide (co-pilot) and interviewer modes */
+  toggleMode: () => VoiceSessionMode;
+  /** Sets active mode */
+  setMode: (mode: VoiceSessionMode) => void;
+  /** Returns current active mode */
+  getMode: () => VoiceSessionMode;
 }
 
 export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(function VoiceSession({
@@ -353,11 +360,21 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
 }: VoiceSessionProps, ref): React.JSX.Element {
   const [status, setStatus] = useState<VoiceSessionStatus>("disconnected");
   const [engine, setEngine] = useState<"live" | "fallback">(initialEngine);
+  const [activeMode, setActiveMode] = useState<VoiceSessionMode>(mode);
   const [internalAnalyser, setInternalAnalyser] = useState<AnalyserNode | null>(null);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [recentTranscripts, setRecentTranscripts] = useState<TranscriptMessage[]>([]);
+
+  // Sliding memory window for multi-turn conversational AI
+  const voiceHistoryRef = useRef<{ role: "user" | "assistant"; content: string }[]>([]);
+  const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const speechHeartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    setActiveMode(mode);
+  }, [mode]);
 
   const agentRef = useRef<VoiceAgent | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -567,23 +584,45 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
     if (typeof window === "undefined" || !textToSpeak.trim()) return;
     try {
       if ("speechSynthesis" in window) {
+        if (speechHeartbeatRef.current) {
+          clearInterval(speechHeartbeatRef.current);
+          speechHeartbeatRef.current = null;
+        }
         window.speechSynthesis.cancel();
+
         const utterance = new SpeechSynthesisUtterance(textToSpeak);
+        activeUtteranceRef.current = utterance;
+        if (typeof window !== "undefined") {
+          (window as unknown as { __praxisActiveUtterance?: SpeechSynthesisUtterance }).__praxisActiveUtterance = utterance;
+        }
+
         utterance.rate = 1.02;
         utterance.pitch = domain === "sales" ? 0.94 : 1.0;
         
         utterance.onstart = () => {
           setIsSpeaking(true);
           startTtsAudioDriver(activeAnalyser);
+          // Chromium Keep-Alive Heartbeat: prevents browser speech engine from going silent after 8-9 convos / 15s
+          speechHeartbeatRef.current = setInterval(() => {
+            if (typeof window !== "undefined" && "speechSynthesis" in window && window.speechSynthesis.speaking) {
+              window.speechSynthesis.pause();
+              window.speechSynthesis.resume();
+            }
+          }, 5000);
         };
-        utterance.onend = () => {
+
+        const cleanupSpeech = () => {
           setIsSpeaking(false);
           stopTtsAudioDriver();
+          if (speechHeartbeatRef.current) {
+            clearInterval(speechHeartbeatRef.current);
+            speechHeartbeatRef.current = null;
+          }
+          activeUtteranceRef.current = null;
         };
-        utterance.onerror = () => {
-          setIsSpeaking(false);
-          stopTtsAudioDriver();
-        };
+
+        utterance.onend = cleanupSpeech;
+        utterance.onerror = cleanupSpeech;
         window.speechSynthesis.speak(utterance);
       }
     } catch {
@@ -593,7 +632,9 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
   }, [activeAnalyser, domain, startTtsAudioDriver, stopTtsAudioDriver]);
 
   /**
-   * Contextual evaluator heuristic responder when running in local fallback engine.
+   * Intelligent conversational AI responder for local zero-latency TTS flow.
+   * Calls chatVoiceCompanionAction (Groq Llama 3.3 70B / Gemini) with multi-turn history,
+   * then falls back to contextual heuristics.
    */
   const generateFallbackReply = useCallback(async (userText: string): Promise<string> => {
     if (onFallbackReply) {
@@ -603,7 +644,36 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
       } catch {}
     }
 
+    try {
+      const mappedMode = activeMode === "interviewer" ? "interviewer" : (activeMode === "guide" ? "guide" : "copilot");
+      const res = await chatVoiceCompanionAction({
+        userMessage: userText,
+        domain: domain || "engineering",
+        mode: mappedMode,
+        problemTitle: problemTitle || "",
+        history: voiceHistoryRef.current.map((h) => ({
+          role: h.role === "assistant" ? "assistant" : "user",
+          content: h.content,
+        })),
+      });
+
+      if (res && res.reply) {
+        voiceHistoryRef.current.push({ role: "user", content: userText });
+        voiceHistoryRef.current.push({ role: "assistant", content: res.reply });
+        if (voiceHistoryRef.current.length > 14) {
+          voiceHistoryRef.current = voiceHistoryRef.current.slice(-10);
+        }
+        return res.reply;
+      }
+    } catch (actionErr) {
+      console.warn("[VoiceSession] Companion Server Action error:", actionErr);
+    }
+
+    // Contextual heuristic fallback
     const lower = userText.toLowerCase();
+    if (activeMode === "interviewer") {
+      return `Good point on "${userText.slice(0, 35)}". Walk me through the failure modes and edge cases: how does this behave under a 10x traffic spike?`;
+    }
     if (domain === "sales") {
       if (lower.includes("fear") || lower.includes("concern") || lower.includes("latency") || lower.includes("drill") || lower.includes("risk")) {
         return "The root issue is transaction collisions. When 80,000 shoppers check out simultaneously, a lock contention spike caused 18 duplicate charges in staging. If that happens live, our brand reputation is destroyed.";
@@ -611,19 +681,16 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
       if (lower.includes("sla") || lower.includes("atomic") || lower.includes("lock") || lower.includes("concurrency") || lower.includes("uptime")) {
         return "An atomic lock before card dispatch with zero duplicate charge guarantees sounds solid. What SLA uptime penalty credit will you commit to in the renewal contract?";
       }
-      if (lower.includes("competitor") || lower.includes("commercecloud") || lower.includes("take rate") || lower.includes("price") || lower.includes("discount")) {
-        return "CommerceCloud claims lower latency, but their 1.25% take rate adds over $175,000 in fees. If you can provide a multi-year volume discount and guaranteed SLA, we are ready to sign.";
-      }
-      if (lower.includes("demo") || lower.includes("meeting") || lower.includes("architect") || lower.includes("tomorrow") || lower.includes("schedule")) {
-        return "Deal. Let's schedule 15 minutes tomorrow with our technical team to finalize the architecture review and lock in the renewal.";
-      }
       return `I hear you on "${userText.slice(0, 45)}". Let's resolve the checkout concurrency and finalize our SLA terms today.`;
     }
     if (domain === "engineering") {
       if (lower.includes("hint") || lower.includes("look") || lower.includes("where") || lower.includes("help") || lower.includes("race")) {
         return "Investigate the order lock acquisition loop in orderProcessor.ts around line 42. Notice the concurrent thread contention without atomic rollback guards.";
       }
-      return `Observer telemetry logged: "${userText.slice(0, 40)}". Review process locks, worker thread pools, and socket timeouts.`;
+      if (lower.includes("dns") || lower.includes("ip") || lower.includes("timeout")) {
+        return "CoreDNS resolves auth.payment.internal to a dead pod 10.244.3.99. Flush the DNS cache or terminate the dead pod socket to restore traffic.";
+      }
+      return `Observer telemetry acknowledged: "${userText.slice(0, 40)}". Check worker thread pool saturation and lock acquisition timeouts.`;
     }
     if (domain === "sre") {
       return "Notice the Grafana p99 latency spike on the payment gateway after the v2.4.1 deployment. Consider initiating a rollback to revision 3.";
@@ -641,7 +708,7 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
       return "Draft a transparent holding statement addressing checkout delay, and engage key tech influencers with empathy.";
     }
     return `Candidate, I copy: "${userText.slice(0, 40)}". Focus on root cause isolation and systematic verification.`;
-  }, [domain, onFallbackReply]);
+  }, [activeMode, domain, onFallbackReply, problemTitle]);
 
   /**
    * Starts local Web SpeechRecognition for zero-latency microphone transcription.
@@ -685,28 +752,31 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
           window.speechSynthesis.cancel();
           setIsSpeaking(false);
           stopTtsAudioDriver();
+          if (speechHeartbeatRef.current) {
+            clearInterval(speechHeartbeatRef.current);
+            speechHeartbeatRef.current = null;
+          }
         }
 
-        const candidateSpeech = (finalChunk || interim).trim();
-        if (candidateSpeech) {
-          onTranscript?.("user", candidateSpeech);
-          turnBufferRef.current.append(candidateSpeech);
+        // Only emit interim transcript for live preview without appending to final buffer
+        if (interim.trim()) {
+          onTranscript?.("user", interim.trim());
         }
 
         if (finalChunk.trim()) {
-          const completedTurn = turnBufferRef.current.flush();
-          if (completedTurn) {
-            onUserTurn?.(completedTurn);
-            void generateFallbackReply(completedTurn).then((reply) => {
-              onTranscript?.("model", reply);
-              setRecentTranscripts((prev) => [
-                ...prev.slice(-3),
-                { id: Math.random().toString(36).substring(2, 9), role: "user", text: completedTurn, timestamp: Date.now() },
-                { id: Math.random().toString(36).substring(2, 9), role: "model", text: reply, timestamp: Date.now() }
-              ]);
-              speakFallback(reply);
-            });
-          }
+          const completedTurn = finalChunk.trim();
+          onTranscript?.("user", completedTurn);
+          onUserTurn?.(completedTurn);
+
+          void generateFallbackReply(completedTurn).then((reply) => {
+            onTranscript?.("model", reply);
+            setRecentTranscripts((prev) => [
+              ...prev.slice(-3),
+              { id: Math.random().toString(36).substring(2, 9), role: "user", text: completedTurn, timestamp: Date.now() },
+              { id: Math.random().toString(36).substring(2, 9), role: "model", text: reply, timestamp: Date.now() }
+            ]);
+            speakFallback(reply);
+          });
         }
       };
 
@@ -717,10 +787,12 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
       };
 
       rec.onend = () => {
-        // Automatically restart continuous recognition if session is connected, in fallback mode, and not muted
-        if (recognitionRef.current === rec && !isMuted) {
-          try { rec.start(); } catch {}
-        }
+        // Automatically restart continuous recognition safely after short tick to prevent InvalidStateError
+        setTimeout(() => {
+          if (recognitionRef.current === rec && !isMuted) {
+            try { rec.start(); } catch {}
+          }
+        }, 150);
       };
 
       rec.start();
@@ -873,7 +945,7 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
 
       // 2. Instantiate VoiceAgent
       const agent = new VoiceAgent({
-        mode,
+        mode: activeMode,
         systemInstruction,
         voice,
         domain,
@@ -1039,6 +1111,15 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
     },
     switchEngine,
     getEngine: () => engine,
+    toggleMode: () => {
+      const next: VoiceSessionMode = activeMode === "interviewer" ? "guide" : "interviewer";
+      setActiveMode(next);
+      return next;
+    },
+    setMode: (m: VoiceSessionMode) => {
+      setActiveMode(m);
+    },
+    getMode: () => activeMode,
     connect: connectVoice,
     connectVoice,
     disconnect: disconnectVoice,
@@ -1047,7 +1128,7 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
     isMuted: () => isMuted,
     getStatus: () => status,
     getAnalyserNode: () => activeAnalyser,
-  }), [connectVoice, disconnectVoice, toggleMute, isMuted, status, activeAnalyser, engine, speakFallback, switchEngine]);
+  }), [activeMode, connectVoice, disconnectVoice, toggleMute, isMuted, status, activeAnalyser, engine, speakFallback, switchEngine]);
 
   // Handle autoConnect
   useEffect(() => {
@@ -1389,6 +1470,31 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
           }}
         >
           {engine === "fallback" ? "⚡ LOCAL STT/TTS" : "☁ LIVE"}
+        </button>
+
+        {/* Mode Toggle Button: Co-Pilot vs Interviewer */}
+        <button
+          onClick={() => {
+            const nextMode: VoiceSessionMode = activeMode === "interviewer" ? "guide" : "interviewer";
+            setActiveMode(nextMode);
+          }}
+          title="Toggle between Co-Pilot Mentor and Deep Systems Interviewer"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            padding: "3px 8px",
+            background: activeMode === "interviewer" ? "rgba(239, 68, 68, 0.2)" : "rgba(16, 185, 129, 0.2)",
+            border: `1px solid ${activeMode === "interviewer" ? "#ef4444" : "#10b981"}`,
+            borderRadius: 12,
+            color: activeMode === "interviewer" ? "#fca5a5" : "#6ee7b7",
+            fontSize: 10,
+            fontFamily: "monospace",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          {activeMode === "interviewer" ? "🎯 INTERVIEWER" : "🛠️ CO-PILOT"}
         </button>
 
         {/* Domain Badge */}

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import AvatarScene from "../../Avatar/AvatarScene";
+import { VoiceSession, VoiceSessionHandle, VoiceSessionMode } from "../../Avatar/VoiceSession";
 
 interface ProductObserverHUDProps {
   cognitiveLoad: number;
@@ -22,13 +23,15 @@ export default function ProductObserverHUD({
   signals = {},
 }: ProductObserverHUDProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [observerMode, setObserverMode] = useState<VoiceSessionMode>("guide");
+  const voiceSessionRef = useRef<VoiceSessionHandle>(null);
 
   return (
     <div
       style={{
         position: "relative",
         height: "100%",
-        width: isExpanded ? 320 : 44,
+        width: isExpanded ? 380 : 54,
         background: "#0a0d16",
         borderLeft: "1px solid rgba(129, 140, 248, 0.25)",
         display: "flex",
@@ -92,6 +95,124 @@ export default function ProductObserverHUD({
               }}
             >
               DRAG TO ORBIT // 3D DUAL-TORUS CORE
+            </div>
+          </div>
+
+          {/* 2-Way Voice Agent Live Control Panel */}
+          <div
+            style={{
+              padding: "10px 14px",
+              background: "#050814",
+              borderBottom: "1px solid rgba(129, 140, 248, 0.2)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>
+                2-Way Voice Observer
+              </span>
+              <button
+                onClick={() => {
+                  const next: VoiceSessionMode = observerMode === "interviewer" ? "guide" : "interviewer";
+                  setObserverMode(next);
+                  voiceSessionRef.current?.setMode(next);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "3px 8px",
+                  background: observerMode === "interviewer" ? "rgba(239, 68, 68, 0.2)" : "rgba(129, 140, 248, 0.2)",
+                  border: `1px solid ${observerMode === "interviewer" ? "#ef4444" : "#818cf8"}`,
+                  borderRadius: 12,
+                  color: observerMode === "interviewer" ? "#fca5a5" : "#c7d2fe",
+                  fontSize: 10,
+                  fontFamily: "monospace",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                {observerMode === "interviewer" ? "🎯 INTERVIEWER MODE" : "🛠️ CO-PILOT MODE"}
+              </button>
+            </div>
+
+            <div style={{ height: 175, position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(129, 140, 248, 0.2)" }}>
+              <VoiceSession
+                ref={voiceSessionRef}
+                mode={observerMode}
+                domain="product"
+                problemTitle="Scope 3 Product: Black Friday Launch Triage"
+                scenario="Triage 5 crisis emails: Sev-1 checkout double charges, VIP merchant churn, deployment freezes vs marketing blasts"
+                autoConnect={isExpanded}
+                initialEngine="fallback"
+                showAvatar={false}
+                compact={true}
+              />
+            </div>
+
+            {/* Quick Socratic / Technical Doubts Pills */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              <button
+                onClick={() => {
+                  voiceSessionRef.current?.speakProactiveContext(
+                    "Should we hold the deployment for gift cards to focus on the checkout bug?"
+                  );
+                }}
+                style={{
+                  fontSize: 10,
+                  color: "#94a3b8",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  padding: "3px 8px",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                💡 Should we freeze deployments?
+              </button>
+              <button
+                onClick={() => {
+                  voiceSessionRef.current?.speakProactiveContext(
+                    "What is causing the 42.8% checkout drop-off on iOS Safari?"
+                  );
+                }}
+                style={{
+                  fontSize: 10,
+                  color: "#94a3b8",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  padding: "3px 8px",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                ❓ Explain iOS checkout drop-off
+              </button>
+              <button
+                onClick={() => {
+                  setObserverMode("interviewer");
+                  voiceSessionRef.current?.setMode("interviewer");
+                  voiceSessionRef.current?.speakProactiveContext(
+                    "Grill me on how I am prioritizing these 5 competing stakeholder requests."
+                  );
+                }}
+                style={{
+                  fontSize: 10,
+                  color: "#fca5a5",
+                  background: "rgba(239,68,68,0.1)",
+                  border: "1px solid rgba(239,68,68,0.3)",
+                  padding: "3px 8px",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                🎯 Grill me on prioritization trade-offs
+              </button>
             </div>
           </div>
 
@@ -175,7 +296,7 @@ export default function ProductObserverHUD({
           </div>
         </div>
       ) : (
-        /* Collapsed Rail */
+        /* Collapsed Mode Sidebar with Miniature 3D Avatar Orb */
         <div
           onClick={() => setIsExpanded(true)}
           style={{
@@ -184,44 +305,27 @@ export default function ProductObserverHUD({
             flexDirection: "column",
             alignItems: "center",
             paddingTop: 16,
+            gap: 16,
             cursor: "pointer",
             background: "#080a12",
           }}
-          title="Click to expand 3D Observer HUD"
+          title="Click to expand 3D Observer & start voice dialogue"
         >
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsExpanded(true);
-            }}
+          <div
             style={{
-              background: "rgba(129,140,248,0.2)",
-              border: "1px solid rgba(129,140,248,0.4)",
-              color: "#a5b4fc",
-              borderRadius: 4,
-              padding: "4px 6px",
-              cursor: "pointer",
-              fontSize: 11,
-              marginBottom: 16,
+              width: 44,
+              height: 44,
+              borderRadius: "50%",
+              overflow: "hidden",
+              border: "2px solid #818cf8",
+              boxShadow: "0 0 16px rgba(129, 140, 248, 0.45)",
+              position: "relative",
+              background: "#05070d",
             }}
           >
-            ◀
-          </button>
-          <span style={{ position: "relative", display: "flex", height: 10, width: 10, marginBottom: 20 }}>
-            <span
-              style={{
-                backgroundColor: "#818cf8",
-                animation: "ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite",
-                position: "absolute",
-                display: "inline-flex",
-                height: "100%",
-                width: "100%",
-                borderRadius: "9999px",
-                opacity: 0.75,
-              }}
-            />
-            <span style={{ backgroundColor: "#818cf8", position: "relative", display: "inline-flex", borderRadius: "9999px", height: 10, width: 10 }} />
-          </span>
+            <AvatarScene analyserNode={null} domain="product" />
+          </div>
+
           <div
             style={{
               writingMode: "vertical-rl",
@@ -233,7 +337,20 @@ export default function ProductObserverHUD({
               whiteSpace: "nowrap",
             }}
           >
-            3D OBSERVER [{cognitiveLoad}%]
+            3D OBSERVER [TALK]
+          </div>
+
+          <div
+            style={{
+              fontSize: 10,
+              color: "#818cf8",
+              fontWeight: 800,
+              background: "rgba(129,140,248,0.1)",
+              padding: "4px 2px",
+              borderRadius: 3,
+            }}
+          >
+            {cognitiveLoad}%
           </div>
         </div>
       )}

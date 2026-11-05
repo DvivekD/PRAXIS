@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import AvatarScene from "../../Avatar/AvatarScene";
+import { VoiceSession, VoiceSessionHandle, VoiceSessionMode } from "../../Avatar/VoiceSession";
 
 interface ObserverHUDProps {
   analyserNode?: AnalyserNode | null;
@@ -13,6 +14,9 @@ interface ObserverHUDProps {
   testsPassing?: boolean;
   recentTelemetry?: string[];
   onInteract?: (actionText: string) => void;
+  domain?: string;
+  problemTitle?: string;
+  scenario?: string;
 }
 
 export default function ObserverHUD({
@@ -24,9 +28,14 @@ export default function ObserverHUD({
   testsPassing = false,
   recentTelemetry = [],
   onInteract,
+  domain = "engineering",
+  problemTitle = "Scope 1 Engineering: Checkout 504 Gateway Timeouts & Concurrency Race Condition",
+  scenario = "Aura Commerce Black Friday outage investigation and race condition repair",
 }: ObserverHUDProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [observerMode, setObserverMode] = useState<VoiceSessionMode>("guide");
   const [simulatedCognitive, setSimulatedCognitive] = useState(cognitiveLoad);
+  const voiceSessionRef = useRef<VoiceSessionHandle>(null);
 
   // Subtle natural pulse in cognitive load
   useEffect(() => {
@@ -70,7 +79,7 @@ export default function ObserverHUD({
         fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
         color: "#f8fafc",
         overflow: "hidden",
-        width: isExpanded ? 340 : 54,
+        width: isExpanded ? 390 : 64,
         transition: "width 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
       }}
     >
@@ -199,6 +208,124 @@ export default function ObserverHUD({
               }}
             >
               ORBIT / ZOOM ENABLED
+            </div>
+          </div>
+
+          {/* 2-Way Voice Agent Live Control Panel */}
+          <div
+            style={{
+              padding: "10px 14px",
+              background: "#050811",
+              borderBottom: "1px solid #1e293b",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>
+                2-Way Voice Observer
+              </span>
+              <button
+                onClick={() => {
+                  const next: VoiceSessionMode = observerMode === "interviewer" ? "guide" : "interviewer";
+                  setObserverMode(next);
+                  voiceSessionRef.current?.setMode(next);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "3px 8px",
+                  background: observerMode === "interviewer" ? "rgba(239, 68, 68, 0.2)" : "rgba(16, 185, 129, 0.2)",
+                  border: `1px solid ${observerMode === "interviewer" ? "#ef4444" : "#10b981"}`,
+                  borderRadius: 12,
+                  color: observerMode === "interviewer" ? "#fca5a5" : "#6ee7b7",
+                  fontSize: 10,
+                  fontFamily: "monospace",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                {observerMode === "interviewer" ? "🎯 INTERVIEWER MODE" : "🛠️ CO-PILOT MODE"}
+              </button>
+            </div>
+
+            <div style={{ height: 175, position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid #1e293b" }}>
+              <VoiceSession
+                ref={voiceSessionRef}
+                mode={observerMode}
+                domain={domain}
+                problemTitle={problemTitle}
+                scenario={scenario}
+                autoConnect={isExpanded}
+                initialEngine="fallback"
+                showAvatar={false}
+                compact={true}
+              />
+            </div>
+
+            {/* Quick Clue & Technical Doubts Prompts */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              <button
+                onClick={() => {
+                  voiceSessionRef.current?.speakProactiveContext(
+                    "Where is the race condition in the checkout service?"
+                  );
+                }}
+                style={{
+                  fontSize: 10,
+                  color: "#94a3b8",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  padding: "3px 8px",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                💡 Where is order lock contention?
+              </button>
+              <button
+                onClick={() => {
+                  voiceSessionRef.current?.speakProactiveContext(
+                    "Why is CoreDNS failing on port 8443 for auth.payment.internal?"
+                  );
+                }}
+                style={{
+                  fontSize: 10,
+                  color: "#94a3b8",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  padding: "3px 8px",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                ❓ Explain DNS 10.244.3.99 failure
+              </button>
+              <button
+                onClick={() => {
+                  setObserverMode("interviewer");
+                  voiceSessionRef.current?.setMode("interviewer");
+                  voiceSessionRef.current?.speakProactiveContext(
+                    "Grill me on my architectural approach to fixing this race condition."
+                  );
+                }}
+                style={{
+                  fontSize: 10,
+                  color: "#fca5a5",
+                  background: "rgba(239,68,68,0.1)",
+                  border: "1px solid rgba(239,68,68,0.3)",
+                  padding: "3px 8px",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                🎯 Grill me on this concurrency fix
+              </button>
             </div>
           </div>
 
@@ -494,7 +621,7 @@ export default function ObserverHUD({
           </div>
         </div>
       ) : (
-        /* Collapsed Mode Sidebar with Vertical Icons */
+        /* Collapsed Mode Sidebar with Miniature 3D Avatar Orb */
         <div
           style={{
             flex: 1,
@@ -503,26 +630,24 @@ export default function ObserverHUD({
             alignItems: "center",
             paddingTop: 16,
             gap: 16,
+            cursor: "pointer",
           }}
+          onClick={() => setIsExpanded(true)}
+          title="Click 3D Observer to Expand & Talk"
         >
           <div
-            title="3D Observer Active"
             style={{
-              width: 32,
-              height: 32,
+              width: 46,
+              height: 46,
               borderRadius: "50%",
-              background: "rgba(0, 255, 65, 0.1)",
-              border: "1px solid #00ff41",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#00ff41",
-              fontSize: 14,
-              cursor: "pointer",
+              overflow: "hidden",
+              border: "2px solid #00ff41",
+              boxShadow: "0 0 16px rgba(0, 255, 65, 0.45)",
+              position: "relative",
+              background: "#010204",
             }}
-            onClick={() => setIsExpanded(true)}
           >
-            👁
+            <AvatarScene analyserNode={analyserNode} domain="engineering" />
           </div>
 
           <div
@@ -531,11 +656,11 @@ export default function ObserverHUD({
               transform: "rotate(180deg)",
               fontSize: 11,
               fontWeight: 800,
-              color: "#64748b",
+              color: "#00ff41",
               letterSpacing: "2px",
             }}
           >
-            OBSERVER // LIVE
+            3D OBSERVER [TALK]
           </div>
 
           <div
@@ -548,7 +673,7 @@ export default function ObserverHUD({
               borderRadius: 3,
             }}
           >
-            {simulatedCognitive}
+            {simulatedCognitive}%
           </div>
         </div>
       )}

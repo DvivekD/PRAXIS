@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import SqlQuerySubEnv from "./Data/SqlQuerySubEnv";
 import DataPipelineSubEnv from "./Data/DataPipelineSubEnv";
 import AnalyticsBiSubEnv from "./Data/AnalyticsBiSubEnv";
+import { VoiceSession, VoiceSessionHandle, VoiceSessionMode } from "../Avatar/VoiceSession";
 
 // Dynamically import 3D Avatar Scene to ensure no SSR Canvas errors
 const AvatarScene = dynamic(() => import("../Avatar/AvatarScene"), { ssr: false });
@@ -46,9 +47,11 @@ export default function DataWorkspaceEnvironment({
   const [isSqlFixed, setIsSqlFixed] = useState(false);
   const [isPipelineRepaired, setIsPipelineRepaired] = useState(false);
 
-  // 3D Observer HUD visibility
+  // 3D Observer HUD visibility & Voice Session
   const [showObserverHud, setShowObserverHud] = useState(true);
   const [isObserverExpanded, setIsObserverExpanded] = useState(false);
+  const [observerMode, setObserverMode] = useState<VoiceSessionMode>("guide");
+  const voiceSessionRef = useRef<VoiceSessionHandle>(null);
 
   // Dynamic cognitive load & signals
   const [cognitiveLoad, setCognitiveLoad] = useState(48);
@@ -335,12 +338,12 @@ export default function DataWorkspaceEnvironment({
         <AnimatePresence>
           {isObserverExpanded && (
             <motion.aside
-              initial={{ x: 340, opacity: 0 }}
+              initial={{ x: 380, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 340, opacity: 0 }}
+              exit={{ x: 380, opacity: 0 }}
               transition={{ duration: 0.2 }}
               style={{
-                width: 320,
+                width: 380,
                 height: "100%",
                 background: "#04070e",
                 borderLeft: "1px solid #1e293b",
@@ -386,12 +389,130 @@ export default function DataWorkspaceEnvironment({
               </div>
 
               {/* 3D Three.js Interactive Canvas Container */}
-              <div style={{ height: 240, width: "100%", background: "#020306", position: "relative" }}>
+              <div style={{ height: 210, width: "100%", background: "#020306", position: "relative" }}>
                 <AvatarScene
                   analyserNode={null}
                   domain="data"
                   onInteract={handleObserverCoreInteraction}
                 />
+              </div>
+
+              {/* 2-Way Voice Agent Live Control Panel */}
+              <div
+                style={{
+                  padding: "10px 14px",
+                  background: "#050814",
+                  borderBottom: "1px solid rgba(6, 182, 212, 0.2)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>
+                    2-Way Voice Observer
+                  </span>
+                  <button
+                    onClick={() => {
+                      const next: VoiceSessionMode = observerMode === "interviewer" ? "guide" : "interviewer";
+                      setObserverMode(next);
+                      voiceSessionRef.current?.setMode(next);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      padding: "3px 8px",
+                      background: observerMode === "interviewer" ? "rgba(239, 68, 68, 0.2)" : "rgba(6, 182, 212, 0.2)",
+                      border: `1px solid ${observerMode === "interviewer" ? "#ef4444" : "#06b6d4"}`,
+                      borderRadius: 12,
+                      color: observerMode === "interviewer" ? "#fca5a5" : "#67e8f9",
+                      fontSize: 10,
+                      fontFamily: "monospace",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {observerMode === "interviewer" ? "🎯 INTERVIEWER MODE" : "🛠️ CO-PILOT MODE"}
+                  </button>
+                </div>
+
+                <div style={{ height: 175, position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(6, 182, 212, 0.2)" }}>
+                  <VoiceSession
+                    ref={voiceSessionRef}
+                    mode={observerMode}
+                    domain="data"
+                    problemTitle="Scope 4 Data: The Missing DAU Problem (-18% Anomaly)"
+                    scenario="Daily active users dropped 18% on Nov 04 while ingress was normal. Repair SQL inner join and Airflow pipeline schema drift."
+                    autoConnect={isObserverExpanded}
+                    initialEngine="fallback"
+                    showAvatar={false}
+                    compact={true}
+                  />
+                </div>
+
+                {/* Quick Socratic / Technical Doubts Pills */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  <button
+                    onClick={() => {
+                      voiceSessionRef.current?.speakProactiveContext(
+                        "Why is the DAU query undercounting daily active users?"
+                      );
+                    }}
+                    style={{
+                      fontSize: 10,
+                      color: "#94a3b8",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      padding: "3px 8px",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    💡 Why is DAU undercounting users?
+                  </button>
+                  <button
+                    onClick={() => {
+                      voiceSessionRef.current?.speakProactiveContext(
+                        "Explain schema drift between account_uid and user_id in the pipeline."
+                      );
+                    }}
+                    style={{
+                      fontSize: 10,
+                      color: "#94a3b8",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      padding: "3px 8px",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    ❓ Explain schema drift in ETL pipeline
+                  </button>
+                  <button
+                    onClick={() => {
+                      setObserverMode("interviewer");
+                      voiceSessionRef.current?.setMode("interviewer");
+                      voiceSessionRef.current?.speakProactiveContext(
+                        "Grill me on my data pipeline architecture and metric validation approach."
+                      );
+                    }}
+                    style={{
+                      fontSize: 10,
+                      color: "#fca5a5",
+                      background: "rgba(239,68,68,0.1)",
+                      border: "1px solid rgba(239,68,68,0.3)",
+                      padding: "3px 8px",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    🎯 Grill me on data architecture & ETL
+                  </button>
+                </div>
               </div>
 
               {/* Observer Diagnostics & Signals */}

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
+import { VoiceSession, VoiceSessionHandle, VoiceSessionMode } from "../../Avatar/VoiceSession";
 
 const AvatarScene = dynamic(() => import("../../Avatar/AvatarScene"), {
   ssr: false,
@@ -45,6 +46,8 @@ export default function SupportObserverHUD({
   onInteract,
 }: SupportObserverHUDProps) {
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [observerMode, setObserverMode] = useState<VoiceSessionMode>("guide");
+  const voiceSessionRef = useRef<VoiceSessionHandle>(null);
 
   const getSubEnvLabel = () => {
     switch (activeSubEnv) {
@@ -74,7 +77,7 @@ export default function SupportObserverHUD({
         fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
         color: "#f8fafc",
         overflow: "hidden",
-        width: isExpanded ? 340 : 54,
+        width: isExpanded ? 380 : 54,
         transition: "width 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
         flexShrink: 0,
       }}
@@ -134,11 +137,129 @@ export default function SupportObserverHUD({
       </div>
 
       {/* Expanded HUD Content */}
-      {isExpanded && (
+      {isExpanded ? (
         <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
           {/* 3D Observer Avatar Scene Canvas */}
           <div style={{ height: 210, width: "100%", background: "#020307", position: "relative", borderBottom: "1px solid #1e293b" }}>
             <AvatarScene domain="support" analyserNode={analyserNode} onInteract={onInteract} />
+          </div>
+
+          {/* 2-Way Voice Agent Live Control Panel */}
+          <div
+            style={{
+              padding: "10px 14px",
+              background: "#050814",
+              borderBottom: "1px solid rgba(16, 185, 129, 0.2)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>
+                2-Way Voice Observer
+              </span>
+              <button
+                onClick={() => {
+                  const next: VoiceSessionMode = observerMode === "interviewer" ? "guide" : "interviewer";
+                  setObserverMode(next);
+                  voiceSessionRef.current?.setMode(next);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "3px 8px",
+                  background: observerMode === "interviewer" ? "rgba(239, 68, 68, 0.2)" : "rgba(16, 185, 129, 0.2)",
+                  border: `1px solid ${observerMode === "interviewer" ? "#ef4444" : "#10b981"}`,
+                  borderRadius: 12,
+                  color: observerMode === "interviewer" ? "#fca5a5" : "#6ee7b7",
+                  fontSize: 10,
+                  fontFamily: "monospace",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                {observerMode === "interviewer" ? "🎯 INTERVIEWER MODE" : "🛠️ CO-PILOT MODE"}
+              </button>
+            </div>
+
+            <div style={{ height: 175, position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(16, 185, 129, 0.2)" }}>
+              <VoiceSession
+                ref={voiceSessionRef}
+                mode={observerMode}
+                domain="support"
+                problemTitle="Scope 6 Support: SLA Backlog & Customer Escalation"
+                scenario="120 tickets queued up overnight. 3 Enterprise VIP tickets have expiring SLAs due to double credit card debits."
+                autoConnect={isExpanded}
+                initialEngine="fallback"
+                showAvatar={false}
+                compact={true}
+              />
+            </div>
+
+            {/* Quick Socratic / Technical Doubts Pills */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              <button
+                onClick={() => {
+                  voiceSessionRef.current?.speakProactiveContext(
+                    "Should we refund tickets individually or escalate to SRE?"
+                  );
+                }}
+                style={{
+                  fontSize: 10,
+                  color: "#94a3b8",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  padding: "3px 8px",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                💡 Refund individually or escalate to SRE?
+              </button>
+              <button
+                onClick={() => {
+                  voiceSessionRef.current?.speakProactiveContext(
+                    "What caused transaction 8819 duplicate authorization?"
+                  );
+                }}
+                style={{
+                  fontSize: 10,
+                  color: "#94a3b8",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  padding: "3px 8px",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                ❓ Explain transaction 8819 duplicate charge
+              </button>
+              <button
+                onClick={() => {
+                  setObserverMode("interviewer");
+                  voiceSessionRef.current?.setMode("interviewer");
+                  voiceSessionRef.current?.speakProactiveContext(
+                    "Grill me on my customer retention strategy and SLA prioritization."
+                  );
+                }}
+                style={{
+                  fontSize: 10,
+                  color: "#fca5a5",
+                  background: "rgba(239,68,68,0.1)",
+                  border: "1px solid rgba(239,68,68,0.3)",
+                  padding: "3px 8px",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                🎯 Grill me on customer retention
+              </button>
+            </div>
           </div>
 
           {/* Sub-Environment Indicator */}
@@ -288,6 +409,64 @@ export default function SupportObserverHUD({
                 ? "“Outstanding work! The unified escalation protected our $250k Nordic Goods contract and Alex Chen is already deploying the fix.”"
                 : "“We have 120 tickets queued and enterprise customers breaching SLA. Do not issue piecemeal refunds — inspect the gateway logs and escalate to SRE!”"}
             </div>
+          </div>
+        </div>
+      ) : (
+        /* Collapsed Mode Sidebar with Miniature 3D Avatar Orb */
+        <div
+          onClick={() => setIsExpanded(true)}
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            paddingTop: 16,
+            gap: 16,
+            cursor: "pointer",
+            background: "#03060d",
+          }}
+          title="Click to expand 3D Observer & start voice dialogue"
+        >
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: "50%",
+              overflow: "hidden",
+              border: "2px solid #10b981",
+              boxShadow: "0 0 16px rgba(16, 185, 129, 0.45)",
+              position: "relative",
+              background: "#020307",
+            }}
+          >
+            <AvatarScene domain="support" analyserNode={analyserNode} />
+          </div>
+
+          <div
+            style={{
+              writingMode: "vertical-rl",
+              transform: "rotate(180deg)",
+              fontSize: 10,
+              fontWeight: 800,
+              color: "#10b981",
+              letterSpacing: "2px",
+              whiteSpace: "nowrap",
+            }}
+          >
+            3D OBSERVER [TALK]
+          </div>
+
+          <div
+            style={{
+              fontSize: 10,
+              color: "#10b981",
+              fontWeight: 800,
+              background: "rgba(16,185,129,0.1)",
+              padding: "4px 2px",
+              borderRadius: 3,
+            }}
+          >
+            {cognitiveLoad}%
           </div>
         </div>
       )}

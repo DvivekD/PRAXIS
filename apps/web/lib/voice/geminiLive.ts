@@ -22,7 +22,7 @@ export interface VoiceAgentEvents {
 }
 
 export interface VoiceAgentOptions {
-  mode: "persona" | "guide";
+  mode: "persona" | "guide" | "interviewer";
   systemInstruction?: string;
   voice?: string;
   tools?: VoiceToolDeclaration[];
@@ -223,10 +223,16 @@ export class VoiceAgent {
 
       // 3. Prepare Live connection parameters
       const tools = config.tools || this.options.tools;
+      const defaultVoice =
+        this.options.mode === "guide"
+          ? "Puck"
+          : this.options.mode === "interviewer"
+          ? "Charon"
+          : "Aoede";
       const voice =
         config.voice ||
         this.options.voice ||
-        (this.options.mode === "guide" ? "Puck" : "Aoede");
+        defaultVoice;
       const systemInstruction =
         config.systemInstruction || this.options.systemInstruction;
       const model = config.model || "gemini-2.5-flash-native-audio-latest";
@@ -417,51 +423,64 @@ export class VoiceAgent {
     silenceGain.gain.value = 0;
     this.silenceGainNode = silenceGain;
 
-    // 4. Resample & encode on each audio processing buffer
+    // 4. Resample & encode on each audio processing buffer with error shielding
     processorNode.onaudioprocess = (e: AudioProcessingEvent) => {
-      if (!this.isMicActive || !this.session || this.status !== "connected") {
-        return;
-      }
-
-      const inputChannelData = e.inputBuffer.getChannelData(0);
-
-      // Noise gate & Voice Activity Detection (RMS energy)
-      let sumSquares = 0;
-      for (let i = 0; i < inputChannelData.length; i++) {
-        sumSquares += inputChannelData[i] * inputChannelData[i];
-      }
-      const rms = Math.sqrt(sumSquares / inputChannelData.length);
-
-      // Acoustic echo / speaker feedback protection:
-      // While model is actively outputting audio, suppress acoustic bleed (rms < 0.045)
-      // unless user deliberately speaks loudly over the model.
-      if (this.isModelSpeaking) {
-        if (rms < 0.045) {
-          return;
-        }
-      } else {
-        // Model is silent: apply ambient noise gate (0.012) with 350ms speech hangover
-        if (rms >= 0.012) {
-          this.lastSpeechTime = Date.now();
-        } else if (Date.now() - this.lastSpeechTime > 350) {
-          // Ambient background room noise, avoid sending false audio
-          return;
-        }
-      }
-
-      const resampled = resampleTo16k(inputChannelData, audioCtx.sampleRate, 16000);
-      const pcmBuffer = floatTo16BitPCM(resampled);
-      const base64Audio = arrayBufferToBase64(pcmBuffer);
-
       try {
-        this.session.sendRealtimeInput({
-          audio: {
-            data: base64Audio,
-            mimeType: "audio/pcm;rate=16000",
-          },
-        });
-      } catch (sendErr) {
-        console.warn("[VoiceAgent] Audio chunk transmission failed:", sendErr);
+        if (!this.isMicActive || !this.session || this.status !== "connected") {
+          return;
+        }
+
+        const inputBuffer = e.inputBuffer;
+        if (!inputBuffer || inputBuffer.numberOfChannels === 0) {
+          return;
+        }
+
+        const inputChannelData = inputBuffer.getChannelData(0);
+        if (!inputChannelData || inputChannelData.length === 0) {
+          return;
+        }
+
+        // Noise gate & Voice Activity Detection (RMS energy)
+        let sumSquares = 0;
+        for (let i = 0; i < inputChannelData.length; i++) {
+          sumSquares += inputChannelData[i] * inputChannelData[i];
+        }
+        const rms = Math.sqrt(sumSquares / inputChannelData.length);
+
+        // Acoustic echo / speaker feedback protection:
+        // While model is actively outputting audio, allow intentional user barge-in (rms >= 0.025)
+        // while suppressing light speaker acoustic feedback bleed.
+        if (this.isModelSpeaking) {
+          if (rms < 0.025) {
+            return;
+          }
+          this.lastSpeechTime = Date.now();
+        } else {
+          // Model is silent: high-sensitivity conversational gate (0.003) captures soft speech with 500ms hangover
+          if (rms >= 0.003) {
+            this.lastSpeechTime = Date.now();
+          } else if (Date.now() - this.lastSpeechTime > 500) {
+            // Ambient silence below gate
+            return;
+          }
+        }
+
+        const resampled = resampleTo16k(inputChannelData, audioCtx.sampleRate, 16000);
+        const pcmBuffer = floatTo16BitPCM(resampled);
+        const base64Audio = arrayBufferToBase64(pcmBuffer);
+
+        try {
+          this.session.sendRealtimeInput({
+            audio: {
+              data: base64Audio,
+              mimeType: "audio/pcm;rate=16000",
+            },
+          });
+        } catch (sendErr) {
+          console.warn("[VoiceAgent] Audio chunk transmission failed:", sendErr);
+        }
+      } catch (procErr) {
+        console.warn("[VoiceAgent] Audio processing error in onaudioprocess:", procErr);
       }
     };
 
@@ -479,28 +498,54 @@ export class VoiceAgent {
     this.isMicActive = false;
 
     if (this.micProcessorNode) {
-      this.micProcessorNode.onaudioprocess = null;
-      this.micProcessorNode.disconnect();
+      try {
+        this.micProcessorNode.onaudioprocess = null;
+        this.micProcessorNode.disconnect();
+      } catch (err) {
+        console.warn("[VoiceAgent] micProcessorNode disconnect warning:", err);
+      }
       this.micProcessorNode = null;
     }
 
     if (this.micSourceNode) {
-      this.micSourceNode.disconnect();
+      try {
+        this.micSourceNode.disconnect();
+      } catch (err) {
+        console.warn("[VoiceAgent] micSourceNode disconnect warning:", err);
+      }
       this.micSourceNode = null;
     }
 
     if (this.silenceGainNode) {
-      this.silenceGainNode.disconnect();
+      try {
+        this.silenceGainNode.disconnect();
+      } catch (err) {
+        console.warn("[VoiceAgent] silenceGainNode disconnect warning:", err);
+      }
       this.silenceGainNode = null;
     }
 
     if (this.micStream) {
-      this.micStream.getTracks().forEach((track) => track.stop());
+      try {
+        this.micStream.getTracks().forEach((track) => {
+          try {
+            track.stop();
+          } catch {}
+        });
+      } catch (err) {
+        console.warn("[VoiceAgent] micStream stop warning:", err);
+      }
       this.micStream = null;
     }
 
-    if (this.micAudioContext && this.micAudioContext.state !== "closed") {
-      void this.micAudioContext.close();
+    if (this.micAudioContext) {
+      if (this.micAudioContext.state !== "closed") {
+        try {
+          void this.micAudioContext.close();
+        } catch (err) {
+          console.warn("[VoiceAgent] micAudioContext close warning:", err);
+        }
+      }
       this.micAudioContext = null;
     }
 
@@ -605,14 +650,20 @@ export class VoiceAgent {
 
     try {
       if (this.abortController) {
-        this.abortController.abort();
+        try {
+          this.abortController.abort();
+        } catch {}
       }
       await this.cleanup();
+    } catch (cleanupErr) {
+      console.warn("[VoiceAgent] Disconnect cleanup warning:", cleanupErr);
     } finally {
       this.status = "disconnected";
       this.isDisconnecting = false;
       this.abortController = null;
-      this.events?.onStatusChange("disconnected");
+      try {
+        this.events?.onStatusChange("disconnected");
+      } catch {}
       this.events = null;
     }
   }
@@ -628,10 +679,14 @@ export class VoiceAgent {
       }
       this.session = null;
     }
+
+    this.isModelSpeaking = false;
+    this.lastSpeechTime = 0;
   }
 
   /**
    * Dispatches incoming server WebSocket messages to the registered VoiceAgentEvents callbacks.
+   * Ensures text and audio chunks are reliably dispatched without dropping turns.
    */
   private handleServerMessage(msg: LiveServerMessage): void {
     if (!this.events) {
@@ -639,37 +694,90 @@ export class VoiceAgent {
     }
 
     try {
-      // 1. Model Audio Chunks & Transcript Parts
+      // 1. Model Audio Chunks & Transcript Parts from serverContent
       if (msg.serverContent) {
         if (msg.serverContent.modelTurn?.parts) {
           for (const part of msg.serverContent.modelTurn.parts) {
+            // Audio chunk dispatch
             if (part.inlineData?.data) {
-              this.events.onAudioChunk(part.inlineData.data);
+              try {
+                this.events.onAudioChunk(part.inlineData.data);
+              } catch (audioErr) {
+                console.error("[VoiceAgent] onAudioChunk error:", audioErr);
+              }
             }
+            // Model text part dispatch (filter out model thoughts)
             if (part.text && !("thought" in part && Boolean((part as { thought?: boolean }).thought))) {
-              this.events.onTranscript("model", part.text);
+              try {
+                this.events.onTranscript("model", part.text);
+              } catch (textErr) {
+                console.error("[VoiceAgent] onTranscript (modelTurn text) error:", textErr);
+              }
             }
           }
         }
 
         // 2. Interruption / Barge-in
         if (msg.serverContent.interrupted) {
-          this.events.onInterrupted();
+          try {
+            this.events.onInterrupted();
+          } catch (intErr) {
+            console.error("[VoiceAgent] onInterrupted error:", intErr);
+          }
         }
 
         // 3. User Speech-to-Text Transcription
         if (msg.serverContent.inputTranscription?.text) {
-          this.events.onTranscript("user", msg.serverContent.inputTranscription.text);
+          const userText = msg.serverContent.inputTranscription.text;
+          if (userText) {
+            try {
+              this.events.onTranscript("user", userText);
+            } catch (userTextErr) {
+              console.error("[VoiceAgent] onTranscript (inputTranscription) error:", userTextErr);
+            }
+          }
         }
 
         // 4. Model Speech-to-Text Transcription
         if (msg.serverContent.outputTranscription?.text) {
-          this.events.onTranscript("model", msg.serverContent.outputTranscription.text);
+          const modelText = msg.serverContent.outputTranscription.text;
+          if (modelText) {
+            try {
+              this.events.onTranscript("model", modelText);
+            } catch (modelTextErr) {
+              console.error("[VoiceAgent] onTranscript (outputTranscription) error:", modelTextErr);
+            }
+          }
         }
 
-        // 5. Turn Complete
-        if (msg.serverContent.turnComplete) {
-          this.events.onTurnComplete?.();
+        // 5. Turn Complete or Generation Complete
+        if (
+          msg.serverContent.turnComplete ||
+          (msg.serverContent as unknown as { generationComplete?: boolean }).generationComplete
+        ) {
+          try {
+            this.events.onTurnComplete?.();
+          } catch (tcErr) {
+            console.error("[VoiceAgent] onTurnComplete error:", tcErr);
+          }
+        }
+      }
+
+      // Fallback: If no serverContent.modelTurn.parts was received, check top-level getters
+      if (!msg.serverContent?.modelTurn?.parts) {
+        if (msg.data) {
+          try {
+            this.events.onAudioChunk(msg.data);
+          } catch (audioErr) {
+            console.error("[VoiceAgent] onAudioChunk (msg.data) error:", audioErr);
+          }
+        }
+        if (msg.text) {
+          try {
+            this.events.onTranscript("model", msg.text);
+          } catch (textErr) {
+            console.error("[VoiceAgent] onTranscript (msg.text) error:", textErr);
+          }
         }
       }
 
@@ -679,7 +787,11 @@ export class VoiceAgent {
           if (call.name) {
             const args = (call.args as Record<string, unknown>) || {};
             const id = call.id || "";
-            this.events.onToolCall(call.name, args, id);
+            try {
+              this.events.onToolCall(call.name, args, id);
+            } catch (toolErr) {
+              console.error("[VoiceAgent] onToolCall error:", toolErr);
+            }
           }
         }
       }

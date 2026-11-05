@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import AvatarScene from "./AvatarScene";
+import { VoiceSession, VoiceSessionHandle, VoiceSessionMode } from "./VoiceSession";
 
 interface ObserverWidgetProps {
   domain: string;
@@ -35,6 +36,8 @@ export default function ObserverWidget({
 }: ObserverWidgetProps) {
   const hasDedicatedHud = ["brand", "sales", "support", "data"].includes(domain.toLowerCase());
   const [isMinimized, setIsMinimized] = useState(hasDedicatedHud);
+  const [observerMode, setObserverMode] = useState<VoiceSessionMode>("guide");
+  const voiceSessionRef = useRef<VoiceSessionHandle>(null);
   const themeColor = DOMAIN_COLORS[domain.toLowerCase()] || "#00ff41";
 
   return (
@@ -56,46 +59,42 @@ export default function ObserverWidget({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.8, opacity: 0 }}
             onClick={() => setIsMinimized(false)}
-            title="Expand 3D Observer"
+            title="Expand 3D Observer & Talk"
             style={{
               display: "flex",
               alignItems: "center",
               gap: 10,
-              background: "rgba(5, 8, 16, 0.92)",
-              border: `1px solid ${themeColor}60`,
+              background: "rgba(5, 8, 16, 0.94)",
+              border: `1px solid ${themeColor}70`,
               boxShadow: `0 8px 30px rgba(0,0,0,0.7), 0 0 15px ${themeColor}30`,
               borderRadius: 30,
-              padding: "10px 18px",
+              padding: "6px 14px 6px 8px",
               cursor: "pointer",
               color: "#fff",
               backdropFilter: "blur(12px)",
             }}
           >
-            <span style={{ position: "relative", display: "flex", width: 12, height: 12 }}>
-              <span
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  borderRadius: "50%",
-                  background: themeColor,
-                  opacity: 0.75,
-                  animation: "ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite",
-                }}
-              />
-              <span
-                style={{
-                  position: "relative",
-                  borderRadius: "50%",
-                  width: 12,
-                  height: 12,
-                  background: themeColor,
-                }}
-              />
-            </span>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "1px", color: themeColor }}>
-              3D OBSERVER
-            </span>
-            <span style={{ fontSize: 10, color: "#94a3b8" }}>▲ EXPAND</span>
+            <div
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: "50%",
+                overflow: "hidden",
+                border: `2px solid ${themeColor}`,
+                boxShadow: `0 0 12px ${themeColor}80`,
+                position: "relative",
+                background: "#010204",
+                flexShrink: 0,
+              }}
+            >
+              <AvatarScene analyserNode={analyserNode} domain={domain} />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "1px", color: themeColor }}>
+                3D OBSERVER [TALK]
+              </span>
+              <span style={{ fontSize: 9, color: "#94a3b8" }}>▲ CLICK TO EXPAND</span>
+            </div>
           </motion.button>
         ) : (
           <motion.div
@@ -104,7 +103,7 @@ export default function ObserverWidget({
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
             style={{
-              width: 280,
+              width: 360,
               background: "rgba(6, 10, 18, 0.94)",
               border: `1px solid ${themeColor}50`,
               boxShadow: `0 16px 40px rgba(0,0,0,0.85), 0 0 25px ${themeColor}25`,
@@ -169,7 +168,7 @@ export default function ObserverWidget({
             <div
               style={{
                 width: "100%",
-                height: 200,
+                height: 190,
                 position: "relative",
                 background: "#010308",
               }}
@@ -179,6 +178,105 @@ export default function ObserverWidget({
                 domain={domain}
                 onInteract={onInteract}
               />
+            </div>
+
+            {/* 2-Way Voice Agent Live Control Panel */}
+            <div
+              style={{
+                padding: "10px 14px",
+                background: "rgba(5, 8, 16, 0.9)",
+                borderBottom: `1px solid ${themeColor}20`,
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>
+                  2-Way Voice Dialogue
+                </span>
+                <button
+                  onClick={() => {
+                    const next: VoiceSessionMode = observerMode === "interviewer" ? "guide" : "interviewer";
+                    setObserverMode(next);
+                    voiceSessionRef.current?.setMode(next);
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "3px 8px",
+                    background: observerMode === "interviewer" ? "rgba(239, 68, 68, 0.2)" : `${themeColor}20`,
+                    border: `1px solid ${observerMode === "interviewer" ? "#ef4444" : themeColor}`,
+                    borderRadius: 12,
+                    color: observerMode === "interviewer" ? "#fca5a5" : themeColor,
+                    fontSize: 10,
+                    fontFamily: "monospace",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  {observerMode === "interviewer" ? "🎯 INTERVIEWER MODE" : "🛠️ CO-PILOT MODE"}
+                </button>
+              </div>
+
+              <div style={{ height: 165, position: "relative", borderRadius: 8, overflow: "hidden", border: `1px solid ${themeColor}25` }}>
+                <VoiceSession
+                  ref={voiceSessionRef}
+                  mode={observerMode}
+                  domain={domain}
+                  problemTitle={`Scope ${domain.toUpperCase()} Simulation Assessment`}
+                  scenario="Candidate live interactive workspace simulation"
+                  autoConnect={!isMinimized}
+                  initialEngine="fallback"
+                  showAvatar={false}
+                  compact={true}
+                />
+              </div>
+
+              {/* Quick Prompt Pills */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                <button
+                  onClick={() => {
+                    voiceSessionRef.current?.speakProactiveContext(
+                      `Give me a subtle hint or architectural tip for the ${domain} problem.`
+                    );
+                  }}
+                  style={{
+                    fontSize: 10,
+                    color: "#94a3b8",
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    padding: "3px 8px",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  💡 Give me a subtle hint
+                </button>
+                <button
+                  onClick={() => {
+                    setObserverMode("interviewer");
+                    voiceSessionRef.current?.setMode("interviewer");
+                    voiceSessionRef.current?.speakProactiveContext(
+                      `Grill me on my technical strategy and trade-offs for this ${domain} challenge.`
+                    );
+                  }}
+                  style={{
+                    fontSize: 10,
+                    color: "#fca5a5",
+                    background: "rgba(239,68,68,0.1)",
+                    border: "1px solid rgba(239,68,68,0.3)",
+                    padding: "3px 8px",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  🎯 Grill me on this architecture
+                </button>
+              </div>
             </div>
 
             {/* Telemetry Footer */}

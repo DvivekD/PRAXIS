@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 const GEMINI_LIVE_MODEL = "gemini-2.5-flash-native-audio-latest";
 
 export interface SessionRequestBody {
-  mode?: "persona" | "guide";
+  mode?: "persona" | "guide" | "interviewer";
   domain?: string;
   problemTitle?: string;
   scenario?: string;
@@ -39,7 +39,7 @@ export interface SessionErrorResponse {
  * Builds the system instruction prompt and voice configuration based on mode.
  */
 function buildSessionConfig(
-  mode: "persona" | "guide",
+  mode: "persona" | "guide" | "interviewer",
   domain: string,
   problemTitle: string,
   scenario: string,
@@ -49,44 +49,64 @@ function buildSessionConfig(
   voice: string;
   tools?: VoiceToolDeclaration[];
 } {
+  const tools: VoiceToolDeclaration[] = [
+    {
+      name: "log_event",
+      description:
+        "Log coaching events, observations, or guidance interventions during the candidate assessment",
+      parameters: {
+        type: "OBJECT",
+        properties: {
+          event: {
+            type: "STRING",
+            description:
+              "Short category or title of the coaching event (e.g., 'hint_given', 'mistake_prevented', 'idle_nudge')",
+          },
+          detail: {
+            type: "STRING",
+            description:
+              "Detailed description of the observation or coaching intervention",
+          },
+        },
+        required: ["event", "detail"],
+      },
+    },
+  ];
+
+  if (mode === "interviewer") {
+    const interviewerInstruction = [
+      `You are an elite Lead Technical & Systems Interviewer conducting an interactive viva / interview for the ${domain.toUpperCase()} assessment.`,
+      `Problem Statement: ${problemTitle}`,
+      `Current Scenario: ${scenario}`,
+      "",
+      "INTERVIEWER CORE BEHAVIOR:",
+      "1. Speak naturally like a Staff / Principal Engineer or Engineering Director.",
+      "2. Proactively grill the candidate, ask probing technical questions about architecture, trade-offs, concurrency bugs, data pipelines, failure recovery, and edge cases.",
+      "3. When the candidate speaks or shares an idea, critically evaluate what they say: validate strong points, point out risks, and follow up with a deeper challenge.",
+      "4. If the candidate asks technical doubts or general questions, answer them clearly with expert depth in 1-3 conversational sentences, then ask how they will apply that.",
+      "5. Keep responses conversational, natural, and punchy (strictly 1 to 3 sentences). Ask 1 compelling question per turn.",
+    ].join("\n");
+
+    return {
+      systemInstruction: interviewerInstruction,
+      voice: "Charon",
+      tools,
+    };
+  }
+
   if (mode === "guide") {
     const guideInstruction = [
-      "You are the PRAXIS Guide, a mentor and technical co-pilot assisting a candidate during a hiring assessment simulation.",
-      "Context:",
+      `You are the PRAXIS Intelligent 3D Observer & Co-Pilot assisting the candidate in the ${domain.toUpperCase()} assessment.`,
       `Problem: ${problemTitle}`,
       `Scenario: ${scenario}`,
       "",
       "BEHAVIORAL RULES:",
       "1. Engage in natural 2-way spoken dialogue with the candidate.",
-      "2. When the candidate executes terminal commands or code actions, proactively speak up with a crisp 1-sentence observation or encouraging technical tip.",
-      "3. When the candidate asks you questions or pauses, guide them with Socratic questions without spoiling the full solution.",
-      "4. Keep all spoken responses strictly 1 to 2 sentences, conversational, warm, and natural.",
-      "5. Never break character as an encouraging, rigorous mentor.",
+      "2. Answer candidate technical doubts, general engineering concepts, and syntax questions freely and accurately in 1-3 conversational sentences.",
+      "3. Provide subtle Socratic clues for the sub-environment problem when asked, steering toward root causes without spoiling the complete answer.",
+      "4. When the candidate executes terminal commands or edits code, offer crisp 1-sentence observations or technical tips.",
+      "5. Keep all spoken responses strictly 1 to 3 sentences, warm, sharp, and natural.",
     ].join("\n");
-
-    const tools: VoiceToolDeclaration[] = [
-      {
-        name: "log_event",
-        description:
-          "Log coaching events, observations, or guidance interventions during the candidate assessment",
-        parameters: {
-          type: "OBJECT",
-          properties: {
-            event: {
-              type: "STRING",
-              description:
-                "Short category or title of the coaching event (e.g., 'hint_given', 'mistake_prevented', 'idle_nudge')",
-            },
-            detail: {
-              type: "STRING",
-              description:
-                "Detailed description of the observation or coaching intervention",
-            },
-          },
-          required: ["event", "detail"],
-        },
-      },
-    ];
 
     return {
       systemInstruction: guideInstruction,
@@ -191,9 +211,9 @@ export async function POST(
     // 3. Validate mode parameter
     const rawMode = typeof body.mode === "string" ? body.mode.trim() : body.mode;
     const mode = rawMode === undefined || rawMode === "" ? "persona" : rawMode;
-    if (mode !== "persona" && mode !== "guide") {
+    if (mode !== "persona" && mode !== "guide" && mode !== "interviewer") {
       return NextResponse.json(
-        { error: "Invalid mode. Expected 'persona' or 'guide'." },
+        { error: "Invalid mode. Expected 'persona', 'guide', or 'interviewer'." },
         {
           status: 400,
           headers: {
