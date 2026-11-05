@@ -186,16 +186,25 @@ export default function HelpdeskEnvironment({
               style={{
                 width: "100%",
                 padding: "10px",
-                background: "linear-gradient(135deg, #f59e0b, #ef4444)",
-                border: "none",
-                color: "#000",
-                fontWeight: 900,
+                background: "rgba(239,68,68,0.15)",
+                border: "1px solid #ef4444",
+                color: "#ef4444",
+                fontWeight: 800,
                 fontSize: 11,
-                borderRadius: 6,
+                borderRadius: 4,
                 cursor: "pointer",
+                fontFamily: "inherit",
+                letterSpacing: "0.5px",
+                boxShadow: "0 0 15px rgba(239,68,68,0.25)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                transition: "all 0.15s ease",
               }}
             >
-              ⚡ BATCH ESCALATE TO SRE (SEV-1)
+              <span>⚡</span>
+              <span>[ BATCH_ESCALATE_TO_SRE // SEV-1 ]</span>
             </button>
           </div>
         )}
@@ -241,17 +250,19 @@ export default function HelpdeskEnvironment({
                 onClick={() => setTone(t)}
                 style={{
                   padding: "4px 10px",
-                  background: tone === t ? "rgba(245,158,11,0.2)" : "#1e293b",
+                  background: tone === t ? "rgba(245,158,11,0.18)" : "rgba(255,255,255,0.03)",
                   border: tone === t ? "1px solid #f59e0b" : "1px solid #334155",
                   color: tone === t ? "#f59e0b" : "#94a3b8",
                   borderRadius: 4,
                   fontSize: 10,
                   fontWeight: 700,
-                  textTransform: "capitalize",
+                  fontFamily: "inherit",
+                  letterSpacing: "0.5px",
                   cursor: "pointer",
+                  transition: "all 0.15s ease",
                 }}
               >
-                {t}
+                [ {t.toUpperCase()} ]
               </button>
             ))}
           </div>
@@ -268,17 +279,26 @@ export default function HelpdeskEnvironment({
             onClick={handleBatchEscalate}
             style={{
               width: "100%",
-              padding: "10px",
-              background: "#22c55e",
-              border: "none",
-              color: "#000",
+              padding: "11px",
+              background: "rgba(34,197,94,0.15)",
+              border: "1px solid #22c55e",
+              color: "#22c55e",
               fontWeight: 800,
               fontSize: 11,
-              borderRadius: 6,
+              borderRadius: 4,
+              fontFamily: "inherit",
+              letterSpacing: "0.5px",
               cursor: "pointer",
+              boxShadow: "0 0 15px rgba(34,197,94,0.25)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              transition: "all 0.15s ease",
             }}
           >
-            Send Unified Reply & Batch Resolve Queue
+            <span>▶</span>
+            <span>[ RESOLVE_QUEUE // SEND_UNIFIED_REPLY ]</span>
           </button>
         </div>
       </div>

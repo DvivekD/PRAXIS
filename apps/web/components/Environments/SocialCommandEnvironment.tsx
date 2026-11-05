@@ -52,19 +52,22 @@ export default function SocialCommandEnvironment({
   const responseOptions = [
     {
       id: 1,
-      title: "Transparent & Accountable (Recommended)",
+      code: "STMT_01",
+      title: "[ 01 // TRANSPARENT_ACCOUNTABILITY // RECOMMENDED ]",
       text: "We hear you loud and clear. Our checkout experienced a concurrency bug causing duplicate pending debits for a small set of orders. The bug has been fixed, zero data was compromised, and all duplicate authorizations are being automatically voided right now. We are deeply sorry for the stress heading into Black Friday.",
       isOptimal: true,
     },
     {
       id: 2,
-      title: "Defensive (Blame Third-Party Banks)",
+      code: "STMT_02",
+      title: "[ 02 // DEFENSIVE_BLAME // EXTERNAL_BANKS ]",
       text: "The issue is due to external card network delays and high traffic from credit card issuers, not our system. Please take it up with your bank before posting online.",
       isOptimal: false,
     },
     {
       id: 3,
-      title: "Dismissive Corporate Boilerplate",
+      code: "STMT_03",
+      title: "[ 03 // DISMISSIVE // CORPORATE_BOILERPLATE ]",
       text: "We are aware of minor latency and thank our community for their patience. Our Black Friday discounts remain active!",
       isOptimal: false,
     },
@@ -237,18 +240,24 @@ export default function SocialCommandEnvironment({
               key={opt.id}
               onClick={() => handlePublish(opt.id)}
               style={{
-                padding: 12,
-                background: selectedResponse === opt.id ? "rgba(34,197,94,0.15)" : "#0b101c",
+                padding: 14,
+                background: selectedResponse === opt.id ? "rgba(34,197,94,0.15)" : "rgba(11,16,28,0.7)",
                 border: selectedResponse === opt.id ? "1px solid #22c55e" : "1px solid #1e293b",
-                borderRadius: 6,
+                borderRadius: 4,
                 cursor: "pointer",
-                transition: "all 0.2s ease",
+                transition: "all 0.15s ease",
+                boxShadow: selectedResponse === opt.id ? "0 0 15px rgba(34,197,94,0.2)" : "none",
               }}
             >
-              <div style={{ fontSize: 11, fontWeight: 800, color: opt.isOptimal ? "#22c55e" : "#f59e0b", marginBottom: 4 }}>
-                {opt.title}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontSize: 10, fontWeight: 800, color: opt.isOptimal ? "#22c55e" : "#f59e0b", letterSpacing: "0.5px" }}>
+                  {opt.title}
+                </span>
+                <span style={{ fontSize: 9, background: "rgba(255,255,255,0.05)", padding: "2px 6px", borderRadius: 3, color: "#94a3b8" }}>
+                  [ TRANSMIT ▶ ]
+                </span>
               </div>
-              <div style={{ fontSize: 11, color: "#cbd5e1", lineHeight: 1.4 }}>
+              <div style={{ fontSize: 11, color: "#cbd5e1", lineHeight: 1.5, fontFamily: "inherit" }}>
                 "{opt.text}"
               </div>
             </div>

@@ -161,32 +161,47 @@ export default function DataWorkspaceEnvironment({
             <button
               onClick={handleApplyDistinct}
               style={{
-                padding: "4px 10px",
-                background: "#0e7490",
-                border: "none",
-                color: "#fff",
+                padding: "5px 12px",
+                background: isFixed ? "rgba(34,197,94,0.12)" : "rgba(6,182,212,0.08)",
+                border: isFixed ? "1px solid #22c55e" : "1px solid rgba(6,182,212,0.5)",
+                color: isFixed ? "#22c55e" : "#38bdf8",
                 borderRadius: 4,
                 fontSize: 11,
                 fontWeight: 700,
+                letterSpacing: "0.5px",
                 cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontFamily: "inherit",
+                transition: "all 0.15s ease",
               }}
             >
-              ⚡ Add DISTINCT
+              <span>⚡</span>
+              <span>[ + DISTINCT ]</span>
             </button>
             <button
               onClick={handleRunQuery}
               style={{
-                padding: "4px 14px",
-                background: "#06b6d4",
-                border: "none",
-                color: "#000",
+                padding: "5px 14px",
+                background: "rgba(6,182,212,0.15)",
+                border: "1px solid #06b6d4",
+                color: "#22d3ee",
                 borderRadius: 4,
                 fontSize: 11,
                 fontWeight: 800,
+                letterSpacing: "0.5px",
                 cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                boxShadow: "0 0 12px rgba(6,182,212,0.25)",
+                fontFamily: "inherit",
+                transition: "all 0.15s ease",
               }}
             >
-              ▶ Run Query (F5)
+              <span>▶</span>
+              <span>[ RUN_QUERY // F5 ]</span>
             </button>
           </div>
         </div>

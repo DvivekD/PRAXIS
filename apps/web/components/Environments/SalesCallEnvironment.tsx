@@ -264,8 +264,8 @@ export default function SalesCallEnvironment({
             </span>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#f59e0b" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#f59e0b" }}>
               ⏱ {formatTimer(callDuration)}
             </div>
             <button
@@ -275,30 +275,38 @@ export default function SalesCallEnvironment({
                 }
               }}
               style={{
-                padding: "4px 10px",
-                background: voiceMode !== "off" ? "rgba(34,197,94,0.15)" : "#1e293b",
+                padding: "5px 12px",
+                background: voiceMode !== "off" ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.03)",
                 border: voiceMode !== "off" ? "1px solid #22c55e" : "1px solid #334155",
                 color: voiceMode !== "off" ? "#22c55e" : "#94a3b8",
                 borderRadius: 4,
                 fontSize: 11,
+                fontWeight: 700,
                 cursor: "pointer",
+                fontFamily: "inherit",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
               }}
             >
-              {voiceMode !== "off" ? "🎙 Live Voice: ACTIVE" : "🎙 Enable Mic"}
+              <span>🎙</span>
+              <span>{voiceMode !== "off" ? "[ VOICE: ACTIVE ]" : "[ VOICE: OFF ]"}</span>
             </button>
             <button
               onClick={() => setIsMuted(!isMuted)}
               style={{
-                padding: "4px 10px",
-                background: isMuted ? "#ef4444" : "#1e293b",
-                border: "none",
-                color: "#fff",
+                padding: "5px 12px",
+                background: isMuted ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.03)",
+                border: isMuted ? "1px solid #ef4444" : "1px solid #334155",
+                color: isMuted ? "#ef4444" : "#94a3b8",
                 borderRadius: 4,
                 fontSize: 11,
+                fontWeight: 700,
                 cursor: "pointer",
+                fontFamily: "inherit",
               }}
             >
-              {isMuted ? "UNMUTE" : "MUTE"}
+              {isMuted ? "[ 🔇 MUTED ]" : "[ 🔊 MUTE ]"}
             </button>
           </div>
         </div>
@@ -369,46 +377,58 @@ export default function SalesCallEnvironment({
               onClick={() => handleSendUtterance("What is your biggest reservation regarding Black Friday scale?")}
               style={{
                 fontSize: 10,
-                padding: "4px 8px",
-                background: "#1e293b",
-                border: "1px solid #334155",
+                padding: "5px 10px",
+                background: "rgba(245,158,11,0.08)",
+                border: "1px solid rgba(245,158,11,0.4)",
                 color: "#f59e0b",
                 borderRadius: 4,
+                fontWeight: 700,
                 cursor: "pointer",
                 whiteSpace: "nowrap",
+                fontFamily: "inherit",
+                letterSpacing: "0.5px",
+                transition: "all 0.15s ease",
               }}
             >
-              💡 Ask: Core Reservation
+              [ 💡 ASK // CORE_RESERVATION ]
             </button>
             <button
               onClick={() => handleSendUtterance("We resolved the concurrency race condition with atomic locks and 99.99% uptime.")}
               style={{
                 fontSize: 10,
-                padding: "4px 8px",
-                background: "#1e293b",
-                border: "1px solid #334155",
+                padding: "5px 10px",
+                background: "rgba(56,189,248,0.08)",
+                border: "1px solid rgba(56,189,248,0.4)",
                 color: "#38bdf8",
                 borderRadius: 4,
+                fontWeight: 700,
                 cursor: "pointer",
                 whiteSpace: "nowrap",
+                fontFamily: "inherit",
+                letterSpacing: "0.5px",
+                transition: "all 0.15s ease",
               }}
             >
-              🛡 Explain: Concurrency Fix & SLA
+              [ 🛡 EXPLAIN // CONCURRENCY_SLA ]
             </button>
             <button
               onClick={() => handleSendUtterance("Can we lock in 15 minutes with our lead architect tomorrow to review the architecture?")}
               style={{
                 fontSize: 10,
-                padding: "4px 8px",
-                background: "#1e293b",
-                border: "1px solid #334155",
+                padding: "5px 10px",
+                background: "rgba(34,197,94,0.08)",
+                border: "1px solid rgba(34,197,94,0.4)",
                 color: "#22c55e",
                 borderRadius: 4,
+                fontWeight: 700,
                 cursor: "pointer",
                 whiteSpace: "nowrap",
+                fontFamily: "inherit",
+                letterSpacing: "0.5px",
+                transition: "all 0.15s ease",
               }}
             >
-              📅 Propose: Technical Demo
+              [ 📅 PROPOSE // TECHNICAL_DEMO ]
             </button>
           </div>
 
@@ -440,16 +460,23 @@ export default function SalesCallEnvironment({
               type="submit"
               style={{
                 padding: "8px 16px",
-                background: "#f59e0b",
-                border: "none",
-                color: "#000",
+                background: "rgba(245,158,11,0.15)",
+                border: "1px solid #f59e0b",
+                color: "#f59e0b",
                 fontWeight: 800,
-                borderRadius: 6,
-                fontSize: 12,
+                borderRadius: 4,
+                fontSize: 11,
                 cursor: "pointer",
+                fontFamily: "inherit",
+                letterSpacing: "0.5px",
+                boxShadow: "0 0 10px rgba(245,158,11,0.25)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                transition: "all 0.15s ease",
               }}
             >
-              Speak / Send
+              <span>[ TRANSMIT ▶ ]</span>
             </button>
           </form>
         </div>
@@ -518,20 +545,26 @@ export default function SalesCallEnvironment({
                 disabled={bookingConfirmed}
                 style={{
                   padding: "10px 12px",
-                  background: selectedSlot === slot ? "rgba(34,197,94,0.15)" : "#060911",
+                  background: selectedSlot === slot ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.02)",
                   border: selectedSlot === slot ? "1px solid #22c55e" : "1px solid #1e293b",
-                  borderRadius: 6,
+                  borderRadius: 4,
                   color: selectedSlot === slot ? "#22c55e" : "#f8fafc",
                   textAlign: "left",
                   fontSize: 11,
+                  fontFamily: "inherit",
+                  letterSpacing: "0.5px",
                   cursor: bookingConfirmed ? "default" : "pointer",
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
+                  boxShadow: selectedSlot === slot ? "0 0 12px rgba(34,197,94,0.25)" : "none",
+                  transition: "all 0.15s ease",
                 }}
               >
-                <span>📅 {slot}</span>
-                <span style={{ fontSize: 10, color: "#f59e0b" }}>{selectedSlot === slot ? "BOOKED" : "AVAILABLE"}</span>
+                <span>[ 📅 {slot} ]</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: selectedSlot === slot ? "#22c55e" : "#f59e0b" }}>
+                  {selectedSlot === slot ? "[ CONFIRMED ]" : "[ AVAILABLE ▶ ]"}
+                </span>
               </button>
             ))}
           </div>

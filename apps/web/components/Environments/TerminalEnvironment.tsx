@@ -280,34 +280,48 @@ export default function TerminalEnvironment({
           </span>
         </div>
 
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <button
             onClick={() => handleCommand("npm test")}
             style={{
-              padding: "4px 10px",
-              background: "#1e293b",
-              border: "1px solid #334155",
+              padding: "5px 12px",
+              background: "rgba(56,189,248,0.08)",
+              border: "1px solid rgba(56,189,248,0.4)",
               color: "#38bdf8",
               borderRadius: 4,
               fontSize: 11,
+              fontWeight: 700,
+              fontFamily: "inherit",
+              letterSpacing: "0.5px",
               cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
-            Run Tests (npm test)
+            <span>▶</span>
+            <span>[ RUN_TESTS // npm test ]</span>
           </button>
           <button
             onClick={() => handleCommand("fix")}
             style={{
-              padding: "4px 10px",
-              background: isFixed ? "rgba(34,197,94,0.15)" : "#1e293b",
-              border: isFixed ? "1px solid #22c55e" : "1px solid #334155",
+              padding: "5px 12px",
+              background: isFixed ? "rgba(34,197,94,0.12)" : "rgba(245,158,11,0.08)",
+              border: isFixed ? "1px solid #22c55e" : "1px solid rgba(245,158,11,0.4)",
               color: isFixed ? "#22c55e" : "#f59e0b",
               borderRadius: 4,
               fontSize: 11,
+              fontWeight: 700,
+              fontFamily: "inherit",
+              letterSpacing: "0.5px",
               cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
-            {isFixed ? "✓ Fix Applied" : "Apply Patch (fix)"}
+            <span>⚡</span>
+            <span>{isFixed ? "[ ✓ PATCH_APPLIED ]" : "[ APPLY_PATCH // fix ]"}</span>
           </button>
         </div>
       </div>
@@ -414,31 +428,36 @@ export default function TerminalEnvironment({
                     handleCommand("fix");
                   }}
                   style={{
-                    background: "#22c55e",
-                    color: "#000",
-                    border: "none",
-                    padding: "4px 12px",
+                    background: "rgba(34,197,94,0.15)",
+                    border: "1px solid #22c55e",
+                    color: "#22c55e",
+                    padding: "5px 12px",
                     borderRadius: 4,
                     fontSize: 11,
                     fontWeight: 800,
                     cursor: "pointer",
+                    fontFamily: "inherit",
+                    letterSpacing: "0.5px",
+                    boxShadow: "0 0 10px rgba(34,197,94,0.2)",
                   }}
                 >
-                  Save & Apply Fix (Ctrl+O)
+                  [ SAVE_AND_APPLY // Ctrl+O ]
                 </button>
                 <button
                   onClick={() => setEditorOpen(false)}
                   style={{
-                    background: "#334155",
-                    color: "#fff",
-                    border: "none",
-                    padding: "4px 10px",
+                    background: "#080c14",
+                    color: "#94a3b8",
+                    border: "1px solid #334155",
+                    padding: "5px 10px",
                     borderRadius: 4,
                     fontSize: 11,
+                    fontWeight: 700,
                     cursor: "pointer",
+                    fontFamily: "inherit",
                   }}
                 >
-                  Close (Ctrl+X)
+                  [ CLOSE // Ctrl+X ]
                 </button>
               </div>
             </div>

@@ -164,17 +164,22 @@ export default function WarRoomEnvironment({
             onClick={handlePostStatusPage}
             disabled={statusPosted}
             style={{
-              padding: "4px 10px",
-              background: statusPosted ? "#1e293b" : "#451a03",
-              border: `1px solid ${statusPosted ? "#334155" : "#f59e0b"}`,
+              padding: "5px 12px",
+              background: statusPosted ? "rgba(255,255,255,0.03)" : "rgba(245,158,11,0.08)",
+              border: statusPosted ? "1px solid #334155" : "1px solid rgba(245,158,11,0.5)",
               color: statusPosted ? "#64748b" : "#f59e0b",
               borderRadius: 4,
               fontSize: 11,
               fontWeight: 700,
               cursor: statusPosted ? "default" : "pointer",
+              fontFamily: "inherit",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
-            {statusPosted ? "✓ Status Page Updated" : "📢 Update Status Page"}
+            <span>📢</span>
+            <span>{statusPosted ? "[ STATUS_PAGE: NOTIFIED ]" : "[ UPDATE_STATUS_PAGE ]"}</span>
           </button>
         </div>
       </div>
@@ -276,21 +281,24 @@ export default function WarRoomEnvironment({
                 disabled={isRecovering}
                 style={{
                   padding: "12px",
-                  background: isRecovering ? "rgba(34,197,94,0.15)" : "#dc2626",
-                  border: isRecovering ? "1px solid #22c55e" : "none",
-                  color: "#fff",
+                  background: isRecovering ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.15)",
+                  border: isRecovering ? "1px solid #22c55e" : "1px solid #ef4444",
+                  color: isRecovering ? "#22c55e" : "#fca5a5",
                   fontWeight: 900,
-                  fontSize: 11,
-                  borderRadius: 6,
+                  fontSize: 12,
+                  borderRadius: 4,
                   cursor: isRecovering ? "default" : "pointer",
                   display: "flex",
                   justifyContent: "center",
                   alignItems: "center",
-                  gap: 6,
+                  gap: 8,
+                  fontFamily: "inherit",
+                  letterSpacing: "0.5px",
+                  boxShadow: isRecovering ? "0 0 15px rgba(34,197,94,0.2)" : "0 0 15px rgba(239,68,68,0.3)",
                 }}
               >
                 <span>🔥</span>
-                <span>{isRecovering ? "✓ ROLLBACK ACTIVE (MONITORING)" : "ROLLBACK TO v2.4.0 (1-CLICK)"}</span>
+                <span>{isRecovering ? "[ ROLLBACK_ACTIVE // MONITORING ]" : "[ 1-CLICK_ROLLBACK_TO_v2.4.0 ]"}</span>
               </button>
 
               <div style={{ display: "flex", gap: 8 }}>
@@ -300,15 +308,17 @@ export default function WarRoomEnvironment({
                   style={{
                     flex: 1,
                     padding: "8px",
-                    background: "#1e293b",
+                    background: "rgba(255,255,255,0.03)",
                     border: "1px solid #334155",
                     color: "#94a3b8",
                     borderRadius: 4,
                     fontSize: 10,
+                    fontWeight: 700,
+                    fontFamily: "inherit",
                     cursor: "pointer",
                   }}
                 >
-                  Restart Pods
+                  [ RESTART_PODS ]
                 </button>
                 <button
                   onClick={() => handleWrongAction("Scale to 50 Replicas")}
@@ -316,15 +326,17 @@ export default function WarRoomEnvironment({
                   style={{
                     flex: 1,
                     padding: "8px",
-                    background: "#1e293b",
+                    background: "rgba(255,255,255,0.03)",
                     border: "1px solid #334155",
                     color: "#94a3b8",
                     borderRadius: 4,
                     fontSize: 10,
+                    fontWeight: 700,
+                    fontFamily: "inherit",
                     cursor: "pointer",
                   }}
                 >
-                  Scale Replicas
+                  [ SCALE_50_REPLICAS ]
                 </button>
               </div>
             </div>
