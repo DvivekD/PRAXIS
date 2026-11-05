@@ -19,4 +19,6 @@
   - Added custom cyberpunk error boundaries (`simulation/[sessionId]/error.tsx` and `app/error.tsx`).
   - Fixed Gemini Live voice connection: resolved WebSocket error 1008 by upgrading model from deprecated `gemini-2.0-flash-exp` to `gemini-2.5-flash-native-audio-latest`.
   - Mounted `<VoiceSession>` into `SimulationPage` with real-time `analyserNode` lip-sync wiring to `<AvatarScene>` and interactive AI Guide Coach Log drawer.
+  - Resolved background noise and self-interruption loop by adding RMS energy Voice Activity Detection (VAD) noise gate, acoustic feedback suppression during model speech, and 350ms speech hangover.
+  - Implemented 1-way proactive spoken responses using `sendClientContent` for terminal commands and idle nudges, alongside conversational 2-way dialogue.
   - Successfully deployed and verified live on `https://praxis-iota-puce.vercel.app/`.
