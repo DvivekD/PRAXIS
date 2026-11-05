@@ -48,6 +48,20 @@
 - **2026-11-05 (Scope 7: Brand — The Viral Brand Crisis Sub-Environments)**:
   - Built the complete 3-sub-environment architecture under `apps/web/components/Environments/Brand/`:
     1. `SocialListeningSubEnv.tsx` (01 — Social Listening & Sentiment Monitor): Tweet / Instagram / Threads / Reddit live mention stream, viral quote-tweet cascade tracking (2,410 RTs, 8,920 QTs, reach metrics, velocity), trending keyword volume spikes (#AuraOutage +1,420%, charged twice +890%), and animated sentiment gauge.
+- **2026-11-05 (Production Release: 21 Sub-Environments, 3D Observer Models, and Dual-Engine Voice)**:
+  - Built all 7 domain scopes with exactly 3 authentic sub-environments each (21 total interactive problem arenas):
+    1. Scope 1: Engineering (SSH Linux Terminal, Network Diagnostics Lab, Code Debugger).
+    2. Scope 2: Sales (Live Voice Call with Sam Jenkins, Pitch Negotiation Builder, Salesforce CRM & Deal Desk).
+    3. Scope 3: Product (Google Gmail Web Inbox, Linear/Jira Kanban Backlog, Mixpanel/Amplitude Analytics).
+    4. Scope 4: Data (SQL Studio with Monaco & schema explorer, Airflow/dbt Pipeline Lab, Tableau/PowerBI Studio).
+    5. Scope 5: SRE (Grafana & PromQL Observability, Incident Command War Room, Kubernetes 16-Pod Rollback Console).
+    6. Scope 6: Support (Zendesk Helpdesk with live SLA timers, Customer Account Investigation, Unified SEV-1 Escalation).
+    7. Scope 7: Brand (Social Listening & Sentiment Monitor, Brand Content Studio, Crisis Command Center).
+  - Preserved the 4 original 3D observer models in `AvatarScene.tsx` (Engineering wireframe cube, Data particle stream, Sales audio-reactive sphere, Product interlocking tori) and developed the other 3 accordingly (SRE alert octahedron & ring, Support harmonic dodecahedron & satellites, Brand resonant wave spheres).
+  - Integrated fail-proof Web Speech API (`webkitSpeechRecognition`) STT + Browser `window.speechSynthesis` TTS dual-engine fallback in `VoiceSession.tsx` to ensure real-time audio interaction never drops even if the Gemini Live WebSocket fails.
+  - Eliminated UI anomalies (repositioned floating Demo Pitch Guide, unified button styling to dark cyber aesthetic, eliminated undefined `.includes` runtime crash in `simulation/[sessionId]/page.tsx`).
+  - Updated Quick Navigation menu (`JudgeMenu.tsx`) with all 7 scopes and 21 sub-environments.
+  - Successfully deployed to Vercel production: `https://praxis-iota-puce.vercel.app`.
     2. `BrandContentStudioSubEnv.tsx` (02 — Brand Content & Response Studio): Multi-part crisis public statement composer with live character counting & auto-thread splitting, 4 archetype presets, real-time Brand Voice Tone Analyzer testing (accountability vs defensiveness vs boilerplate), and high-fidelity social thread live preview.
     3. `CrisisCommandSubEnv.tsx` (03 — Crisis Command Center): Animated public sentiment recovery dial that surges from 28% Hostile to 86% Positive upon publishing an authentic, accountable statement, press inquiry queue with Tier-1 journalists (TechCrunch, Bloomberg, The Verge) and deadline countdowns, and executive PR Incident Report Generator.
   - Exported all shared types through `apps/web/components/Environments/Brand/types.ts`.
