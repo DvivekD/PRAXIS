@@ -3,30 +3,34 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { SCOPE_DEFINITIONS } from "../lib/services/problemBank";
 
 export default function JudgeMenu() {
   const [isOpen, setIsOpen] = useState(false);
+  const [expandedScope, setExpandedScope] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleRoute = (domainOrPath: string, isDirectPath: boolean = false) => {
+  const handleRoute = (domainOrPath: string, isDirectPath: boolean = false, subEnv?: number) => {
     setIsOpen(false);
     if (isDirectPath) {
       router.push(`/${domainOrPath}`);
     } else {
-      router.push(`/seeker/dashboard?domain=${domainOrPath}`);
+      router.push(`/seeker/dashboard?domain=${domainOrPath}${subEnv ? `&subEnv=${subEnv}` : ""}`);
     }
   };
+
+  const scopes = Object.values(SCOPE_DEFINITIONS);
 
   return (
     <div style={{ position: "fixed", top: 20, right: 20, zIndex: 9999 }}>
       {/* Burger Button */}
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
         style={{
-          width: 40,
-          height: 40,
-          background: "rgba(0, 0, 0, 0.8)",
-          border: "1px solid rgba(255, 255, 255, 0.2)",
+          width: 42,
+          height: 42,
+          background: "rgba(6, 10, 18, 0.9)",
+          border: "1px solid rgba(255, 255, 255, 0.25)",
           borderRadius: "50%",
           display: "flex",
           flexDirection: "column",
@@ -34,8 +38,10 @@ export default function JudgeMenu() {
           alignItems: "center",
           gap: 4,
           cursor: "pointer",
-          backdropFilter: "blur(10px)",
+          backdropFilter: "blur(12px)",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.6)",
         }}
+        title="Quick Navigation Menu (7 Scopes × 3 Sub-Envs)"
       >
         <div style={{ width: 16, height: 2, background: "#fff", transition: "all 0.3s", transform: isOpen ? "rotate(45deg) translate(4px, 4px)" : "none" }} />
         <div style={{ width: 16, height: 2, background: "#fff", transition: "all 0.3s", opacity: isOpen ? 0 : 1 }} />
@@ -53,125 +59,148 @@ export default function JudgeMenu() {
               position: "absolute",
               top: 50,
               right: 0,
-              background: "rgba(8, 12, 20, 0.96)",
+              background: "rgba(8, 12, 22, 0.97)",
               border: "1px solid rgba(255, 255, 255, 0.15)",
-              borderRadius: 8,
-              padding: 8,
+              borderRadius: 10,
+              padding: 10,
               display: "flex",
               flexDirection: "column",
-              gap: 2,
-              minWidth: 260,
-              maxHeight: "85vh",
+              gap: 4,
+              minWidth: 320,
+              maxHeight: "88vh",
               overflowY: "auto",
-              boxShadow: "0 12px 40px rgba(0,0,0,0.85)",
-              backdropFilter: "blur(16px)",
+              boxShadow: "0 16px 48px rgba(0,0,0,0.9)",
+              backdropFilter: "blur(20px)",
               fontFamily: "'JetBrains Mono', monospace",
             }}
           >
-            <div style={{ fontSize: 10, color: "#94a3b8", padding: "8px 12px 4px 12px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 800 }}>
-              Quick Navigation // 7 Scopes
+            <div style={{ fontSize: 10, color: "#94a3b8", padding: "6px 12px 2px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 800, display: "flex", justifyContent: "space-between" }}>
+              <span>7 Scopes × 3 Sub-Envs</span>
+              <span style={{ color: "#f59e0b" }}>21 ARENAS</span>
             </div>
-            
-            <motion.button 
-              whileHover={{ background: "rgba(0,255,65,0.1)", x: 3 }}
-              onClick={() => handleRoute("engineering")} 
-              style={{ ...menuBtnStyle, color: "#00ff41" }}
-            >
-              <span style={{ fontSize: 13 }}>💻</span>
-              <span>Engineering (Terminal)</span>
-            </motion.button>
 
-            <motion.button 
-              whileHover={{ background: "rgba(245,158,11,0.1)", x: 3 }}
-              onClick={() => handleRoute("sales")} 
+            {scopes.map((scope) => {
+              const isExpanded = expandedScope === scope.domain;
+              return (
+                <div key={scope.domain} style={{ display: "flex", flexDirection: "column" }}>
+                  <div style={{ display: "flex", alignItems: "center" }}>
+                    <motion.button
+                      whileHover={{ background: `${scope.accent}15`, x: 2 }}
+                      onClick={() => handleRoute(scope.domain)}
+                      style={{
+                        ...menuBtnStyle,
+                        color: scope.accent,
+                        flex: 1,
+                        textAlign: "left",
+                      }}
+                    >
+                      <span style={{ fontSize: 13 }}>◆</span>
+                      <span style={{ fontWeight: 800 }}>{scope.label}</span>
+                    </motion.button>
+
+                    <button
+                      onClick={() => setExpandedScope(isExpanded ? null : scope.domain)}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        color: "#94a3b8",
+                        fontSize: 10,
+                        padding: "6px 10px",
+                        cursor: "pointer",
+                      }}
+                      title="Toggle sub-environments"
+                    >
+                      {isExpanded ? "▲" : "▼"}
+                    </button>
+                  </div>
+
+                  {/* Sub-environments list */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 2,
+                          paddingLeft: 18,
+                          borderLeft: `2px solid ${scope.accent}40`,
+                          marginLeft: 12,
+                          marginBottom: 4,
+                        }}
+                      >
+                        {scope.subEnvironments.map((sub) => (
+                          <motion.button
+                            key={sub.id}
+                            whileHover={{ background: "rgba(255,255,255,0.06)", x: 3 }}
+                            onClick={() => handleRoute(scope.domain, false, sub.subEnv)}
+                            style={{
+                              background: "transparent",
+                              border: "none",
+                              color: "#cbd5e1",
+                              fontSize: 10,
+                              textAlign: "left",
+                              padding: "4px 8px",
+                              borderRadius: 4,
+                              cursor: "pointer",
+                              fontFamily: "'JetBrains Mono', monospace",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                            }}
+                          >
+                            <span style={{ color: scope.accent, fontWeight: 700 }}>0{sub.subEnv}</span>
+                            <span>{sub.title.split("—")[1] || sub.title}</span>
+                          </motion.button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
+
+            <div style={{ height: 1, background: "rgba(255,255,255,0.08)", margin: "4px 0" }} />
+
+            <motion.button
+              whileHover={{ background: "rgba(245,158,11,0.1)", x: 2 }}
+              onClick={() => handleRoute("select-domain", true)}
               style={{ ...menuBtnStyle, color: "#f59e0b" }}
             >
-              <span style={{ fontSize: 13 }}>📞</span>
-              <span>Sales (Live Call)</span>
+              <span>⚡</span>
+              <span>Domain Arena Grid</span>
             </motion.button>
 
-            <motion.button 
-              whileHover={{ background: "rgba(129,140,248,0.1)", x: 3 }}
-              onClick={() => handleRoute("product")} 
-              style={{ ...menuBtnStyle, color: "#818cf8" }}
-            >
-              <span style={{ fontSize: 13 }}>✉️</span>
-              <span>Product (Google Gmail)</span>
-            </motion.button>
-
-            <motion.button 
-              whileHover={{ background: "rgba(6,182,212,0.1)", x: 3 }}
-              onClick={() => handleRoute("data")} 
-              style={{ ...menuBtnStyle, color: "#06b6d4" }}
-            >
-              <span style={{ fontSize: 13 }}>📊</span>
-              <span>Data (SQL Workspace)</span>
-            </motion.button>
-
-            <motion.button 
-              whileHover={{ background: "rgba(239,68,68,0.1)", x: 3 }}
-              onClick={() => handleRoute("sre")} 
-              style={{ ...menuBtnStyle, color: "#ef4444" }}
-            >
-              <span style={{ fontSize: 13 }}>🚨</span>
-              <span>SRE (Incident War Room)</span>
-            </motion.button>
-
-            <motion.button 
-              whileHover={{ background: "rgba(16,185,129,0.1)", x: 3 }}
-              onClick={() => handleRoute("support")} 
-              style={{ ...menuBtnStyle, color: "#10b981" }}
-            >
-              <span style={{ fontSize: 13 }}>🎧</span>
-              <span>Support (Helpdesk Queue)</span>
-            </motion.button>
-
-            <motion.button 
-              whileHover={{ background: "rgba(236,72,153,0.1)", x: 3 }}
-              onClick={() => handleRoute("brand")} 
-              style={{ ...menuBtnStyle, color: "#ec4899" }}
-            >
-              <span style={{ fontSize: 13 }}>📱</span>
-              <span>Brand (Crisis Command)</span>
-            </motion.button>
-
-            <motion.button 
-              whileHover={{ background: "rgba(245,158,11,0.1)", x: 3 }}
-              onClick={() => handleRoute("select-domain", true)} 
-              style={{ ...menuBtnStyle, color: "#f59e0b", borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: 4, paddingTop: 10 }}
-            >
-              <span style={{ fontSize: 13 }}>⚡</span>
-              <span>Domain Selector (Grid)</span>
-            </motion.button>
-
-            <div style={{ fontSize: 10, color: "#64748b", padding: "10px 12px 4px 12px", textTransform: "uppercase", letterSpacing: "1px", borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: 4, fontWeight: 700 }}>
+            <div style={{ fontSize: 9, color: "#64748b", padding: "6px 12px 2px", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>
               Ecosystem
             </div>
 
-            <motion.button 
-              whileHover={{ background: "rgba(255,255,255,0.06)", x: 3 }}
-              onClick={() => handleRoute("company/dashboard", true)} 
+            <motion.button
+              whileHover={{ background: "rgba(255,255,255,0.06)", x: 2 }}
+              onClick={() => handleRoute("company/dashboard", true)}
               style={{ ...menuBtnStyle, color: "#e4e4e7" }}
             >
-              <span style={{ fontSize: 14 }}>&gt;</span>
-              <span>Company Terminal</span>
+              <span>&gt;</span>
+              <span>Company Portal</span>
             </motion.button>
 
-            <motion.button 
-              whileHover={{ background: "rgba(129,140,248,0.1)", x: 3 }}
-              onClick={() => handleRoute("verifier/dashboard", true)} 
+            <motion.button
+              whileHover={{ background: "rgba(129,140,248,0.1)", x: 2 }}
+              onClick={() => handleRoute("verifier/dashboard", true)}
               style={{ ...menuBtnStyle, color: "#818cf8" }}
             >
-              <span style={{ fontSize: 14 }}>&gt;</span>
-              <span>Verifier Node (2FA)</span>
+              <span>&gt;</span>
+              <span>Verifier Node</span>
             </motion.button>
 
-            <motion.button 
-              whileHover={{ background: "rgba(255,255,255,0.06)", x: 3 }}
-              onClick={() => handleRoute("market", true)} 
+            <motion.button
+              whileHover={{ background: "rgba(255,255,255,0.06)", x: 2 }}
+              onClick={() => handleRoute("market", true)}
               style={{ ...menuBtnStyle, color: "#fff" }}
             >
-              <span style={{ fontSize: 14 }}>&gt;</span>
+              <span>&gt;</span>
               <span>Apprentice Market</span>
             </motion.button>
           </motion.div>
@@ -181,17 +210,16 @@ export default function JudgeMenu() {
   );
 }
 
-const menuBtnStyle = {
+const menuBtnStyle: React.CSSProperties = {
   background: "transparent",
   border: "none",
-  padding: "8px 12px",
-  textAlign: "left" as const,
-  cursor: "pointer",
-  fontSize: 12,
+  borderRadius: 6,
+  padding: "7px 10px",
   display: "flex",
   alignItems: "center",
-  gap: 10,
-  borderRadius: 4,
-  transition: "background 0.15s ease",
-  width: "100%",
+  gap: 8,
+  fontSize: 11,
+  cursor: "pointer",
+  transition: "all 0.15s ease",
+  fontFamily: "'JetBrains Mono', monospace",
 };

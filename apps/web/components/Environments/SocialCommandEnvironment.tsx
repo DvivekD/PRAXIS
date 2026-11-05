@@ -1,119 +1,186 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
+import SocialListeningSubEnv from "./Brand/SocialListeningSubEnv";
+import BrandContentStudioSubEnv from "./Brand/BrandContentStudioSubEnv";
+import CrisisCommandSubEnv from "./Brand/CrisisCommandSubEnv";
+import type { BrandMention, PressInquiry, PublishedStatement } from "./Brand/types";
+
+const AvatarScene = dynamic(() => import("../Avatar/AvatarScene"), { ssr: false });
 
 interface SocialCommandEnvironmentProps {
   sessionId: string;
-  onAction: (actionText: string, metadata?: Record<string, any>) => Promise<any>;
+  onAction: (actionText: string, metadata?: Record<string, unknown>) => Promise<unknown>;
   onComplete: () => void;
   demoMode: boolean;
+  analyserNode?: AnalyserNode | null;
+  initialSubEnv?: number;
+  onSubEnvChange?: (sub: number) => void;
 }
+
+const INITIAL_MENTIONS: BrandMention[] = [
+  {
+    id: "m-01",
+    platform: "twitter",
+    author: "Sarah Jenkins (@tech_sarah)",
+    handle: "@tech_sarah",
+    avatar: "SJ",
+    verified: true,
+    followerCount: "28.4k",
+    text: "Are you kidding me @AuraCommerce? You literally charged my card TWICE for a single coat and your checkout crashed (#AuraOutage), and you tweet 'shop till you drop'?? Read the room!! 😡 #chargedtwice #AuraOutage",
+    timestamp: "2m ago",
+    likes: "2.4k",
+    retweets: "812",
+    sentiment: "hostile",
+    reachImpact: "CRITICAL",
+  },
+  {
+    id: "m-02",
+    platform: "twitter",
+    author: "E-Commerce Watch (@ecommerce_fail)",
+    handle: "@ecommerce_fail",
+    avatar: "EW",
+    verified: true,
+    followerCount: "64.2k",
+    text: "Aura Commerce having a full checkout crash meltdown on Black Friday eve while their social scheduler posts hype tweets. Avoid buying right now! #boycottAura #AuraOutage",
+    timestamp: "4m ago",
+    likes: "890",
+    retweets: "340",
+    sentiment: "hostile",
+    reachImpact: "HIGH",
+  },
+  {
+    id: "m-03",
+    platform: "twitter",
+    author: "Marcus Chen (@mchen_dev)",
+    handle: "@mchen_dev",
+    avatar: "MC",
+    verified: true,
+    followerCount: "14.2k",
+    text: "Double charge glitch confirmed on @AuraCommerce checkout. Looks like a race condition in payment idempotency token generation. Urgent refund idempotency patch needed. #checkoutcrash",
+    timestamp: "6m ago",
+    likes: "412",
+    retweets: "95",
+    sentiment: "negative",
+    reachImpact: "MODERATE",
+  },
+  {
+    id: "m-04",
+    platform: "instagram",
+    author: "Retail Insider (@retail_insider)",
+    handle: "@retail_insider",
+    avatar: "RI",
+    verified: true,
+    followerCount: "112k",
+    text: "Customer service wait times exceed 45 minutes on Aura Commerce as hundreds report duplicate debits right before Black Friday drops. #checkoutcrash #chargedtwice",
+    timestamp: "8m ago",
+    likes: "1.8k",
+    sentiment: "negative",
+    reachImpact: "HIGH",
+  },
+  {
+    id: "m-05",
+    platform: "reddit",
+    author: "u/shopper_david",
+    handle: "r/shopping",
+    avatar: "SD",
+    verified: false,
+    followerCount: "1.2k",
+    text: "Charged $180 twice on Aura Commerce. Their promo tweets are active but support is radio silent. Boycott Aura until refunds land! #boycottAura #AuraOutage",
+    timestamp: "11m ago",
+    likes: "320",
+    sentiment: "hostile",
+    reachImpact: "MODERATE",
+  },
+];
+
+const INITIAL_PRESS_INQUIRIES: PressInquiry[] = [
+  {
+    id: "press-01",
+    outlet: "TechCrunch",
+    journalist: "Sarah Koenig",
+    email: "sarah.k@techcrunch.com",
+    outletTier: "Tier 1 (Tech)",
+    deadline: "12m",
+    deadlineMinutes: 12,
+    urgency: "CRITICAL",
+    queryText: "Hearing reports of 10k+ duplicate debits during Black Friday checkout launch. Will Aura Commerce issue an on-the-record comment before our 17:30 publication deadline?",
+    status: "pending",
+  },
+  {
+    id: "press-02",
+    outlet: "Bloomberg Retail",
+    journalist: "Jason Del Rey",
+    email: "jdelrey@bloomberg.net",
+    outletTier: "Tier 1 (Financial)",
+    deadline: "18m",
+    deadlineMinutes: 18,
+    urgency: "CRITICAL",
+    queryText: "Aura Commerce payment gateway failure — is customer financial data compromised? Requesting urgent statement on financial liability and auto-refund procedures.",
+    status: "pending",
+  },
+  {
+    id: "press-03",
+    outlet: "The Verge / Platformer",
+    journalist: "Casey Newton",
+    email: "casey@platformer.news",
+    outletTier: "Tier 1 (Media)",
+    deadline: "25m",
+    deadlineMinutes: 25,
+    urgency: "HIGH",
+    queryText: "Social media backlash against scheduled marketing tweet during active checkout outage. Requesting comment on internal communications protocols.",
+    status: "pending",
+  },
+];
 
 export default function SocialCommandEnvironment({
   sessionId,
   onAction,
   onComplete,
   demoMode,
+  analyserNode = null,
+  initialSubEnv = 1,
+  onSubEnvChange,
 }: SocialCommandEnvironmentProps) {
-  const [sentiment, setSentiment] = useState(28); // 0-100 (28 = Hostile)
-  const [selectedResponse, setSelectedResponse] = useState<number | null>(null);
-  const [published, setPublished] = useState(false);
-  const [mentions, setMentions] = useState([
-    {
-      user: "Sarah Jenkins (@tech_sarah)",
-      handle: "@tech_sarah",
-      avatar: "SJ",
-      text: "Are you kidding me @AuraCommerce? You literally charged my card TWICE for a single coat and your checkout crashed, and you tweet 'shop till you drop'?? Read the room!! 😡",
-      time: "1m ago",
-      likes: "2.4k",
-      sentiment: "negative",
-    },
-    {
-      user: "E-Commerce Watch (@ecommerce_fail)",
-      handle: "@ecommerce_fail",
-      avatar: "EW",
-      text: "Aura Commerce having a full checkout meltdown on Black Friday eve while their social scheduler posts hype tweets. Avoid buying right now.",
-      time: "3m ago",
-      likes: "890",
-      sentiment: "negative",
-    },
-    {
-      user: "Marcus Chen (@mchen_dev)",
-      handle: "@mchen_dev",
-      avatar: "MC",
-      text: "Double charge glitch confirmed on @AuraCommerce checkout. Looks like a race condition in payment idempotency.",
-      time: "5m ago",
-      likes: "412",
-      sentiment: "negative",
-    },
-  ]);
+  const getSubKey = (num: number): "listening" | "studio" | "command" => {
+    if (num === 2) return "studio";
+    if (num === 3) return "command";
+    return "listening";
+  };
 
-  const responseOptions = [
-    {
-      id: 1,
-      code: "STMT_01",
-      title: "[ 01 // TRANSPARENT_ACCOUNTABILITY // RECOMMENDED ]",
-      text: "We hear you loud and clear. Our checkout experienced a concurrency bug causing duplicate pending debits for a small set of orders. The bug has been fixed, zero data was compromised, and all duplicate authorizations are being automatically voided right now. We are deeply sorry for the stress heading into Black Friday.",
-      isOptimal: true,
-    },
-    {
-      id: 2,
-      code: "STMT_02",
-      title: "[ 02 // DEFENSIVE_BLAME // EXTERNAL_BANKS ]",
-      text: "The issue is due to external card network delays and high traffic from credit card issuers, not our system. Please take it up with your bank before posting online.",
-      isOptimal: false,
-    },
-    {
-      id: 3,
-      code: "STMT_03",
-      title: "[ 03 // DISMISSIVE // CORPORATE_BOILERPLATE ]",
-      text: "We are aware of minor latency and thank our community for their patience. Our Black Friday discounts remain active!",
-      isOptimal: false,
-    },
-  ];
+  const [activeSubEnv, setActiveSubEnv] = useState<"listening" | "studio" | "command">(getSubKey(initialSubEnv));
 
-  const handlePublish = (optId: number) => {
-    setSelectedResponse(optId);
-    setPublished(true);
-
-    const chosen = responseOptions.find((o) => o.id === optId);
-    if (chosen?.isOptimal) {
-      setSentiment(86);
-      onAction(`[VICTORY] Brand Lead published authentic crisis statement: "${chosen.text.substring(0, 100)}...". Sentiment surged to 86% Positive.`);
-
-      // Add positive incoming tweets
-      setTimeout(() => {
-        setMentions((prev) => [
-          {
-            user: "Sarah Jenkins (@tech_sarah)",
-            handle: "@tech_sarah",
-            avatar: "SJ",
-            text: "Appreciate the fast, honest accountability and auto-void @AuraCommerce. That's how you handle an outage. Reordering now 👍",
-            time: "Just now",
-            likes: "1.2k",
-            sentiment: "positive",
-          },
-          {
-            user: "Marcus Chen (@mchen_dev)",
-            handle: "@mchen_dev",
-            avatar: "MC",
-            text: "Solid crisis communication from @AuraCommerce. Clear technical root cause and automated remedy.",
-            time: "Just now",
-            likes: "540",
-            sentiment: "positive",
-          },
-          ...prev,
-        ]);
-      }, 600);
-
-      setTimeout(() => {
-        onComplete();
-      }, 3400);
-    } else {
-      setSentiment(14);
-      onAction(`[BRAND_ACTION] Defensive reply published. Sentiment dropped to 14% Hostile.`);
+  const handleNavigate = (sub: "listening" | "studio" | "command") => {
+    setActiveSubEnv(sub);
+    if (onSubEnvChange) {
+      onSubEnvChange(sub === "studio" ? 2 : sub === "command" ? 3 : 1);
     }
+  };
+
+  useEffect(() => {
+    if (initialSubEnv) setActiveSubEnv(getSubKey(initialSubEnv));
+  }, [initialSubEnv]);
+  const [sentiment, setSentiment] = useState<number>(28); // 0-100 (28 = Hostile)
+  const [mentions, setMentions] = useState<BrandMention[]>(INITIAL_MENTIONS);
+  const [pressInquiries, setPressInquiries] = useState<PressInquiry[]>(INITIAL_PRESS_INQUIRIES);
+  const [publishedStatement, setPublishedStatement] = useState<PublishedStatement | null>(null);
+  const [showObserverHud, setShowObserverHud] = useState<boolean>(true);
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(18 * 60 + 42); // Crisis t+18m
+
+  // Timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatElapsed = (sec: number) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `T+${m}:${s < 10 ? "0" : ""}${s}`;
   };
 
   return (
@@ -121,172 +188,352 @@ export default function SocialCommandEnvironment({
       style={{
         height: "100vh",
         width: "100vw",
-        background: "#080c14",
+        background: "#05070e",
         color: "#fff",
         fontFamily: "'JetBrains Mono', -apple-system, sans-serif",
-        display: "grid",
-        gridTemplateColumns: "1fr 420px",
+        display: "flex",
+        flexDirection: "column",
         overflow: "hidden",
       }}
     >
-      {/* LEFT: MENTIONS FEED & VIRAL TWEET */}
-      <div style={{ display: "flex", flexDirection: "column", borderRight: "1px solid #1e293b", background: "#05070d" }}>
-        {/* Header */}
-        <div style={{ padding: "12px 20px", borderBottom: "1px solid #1e293b", background: "#080c14", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 18 }}>📱</span>
-            <span style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>
-              AURA BRAND COMMAND // LIVE MENTIONS
+      {/* ─── TOP MASTER HUD ─── */}
+      <header
+        style={{
+          height: 52,
+          background: "#080c16",
+          borderBottom: "1px solid #1e293b",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 20px",
+          zIndex: 20,
+        }}
+      >
+        {/* Scope Branding */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                background: sentiment > 60 ? "#22c55e" : "#ec4899",
+                boxShadow: `0 0 10px ${sentiment > 60 ? "#22c55e" : "#ec4899"}`,
+                display: "inline-block",
+              }}
+            />
+            <span style={{ fontSize: 13, fontWeight: 900, color: "#fff", letterSpacing: "1px" }}>
+              AURA COMMERCE // SCOPE 7: THE VIRAL BRAND CRISIS
             </span>
           </div>
-          <span style={{ fontSize: 10, background: "rgba(239,68,68,0.15)", color: "#ef4444", padding: "2px 8px", borderRadius: 4, fontWeight: 700 }}>
-            🔥 VIRAL CRISIS DETECTED
+
+          <span
+            style={{
+              fontSize: 10,
+              background: "rgba(236,72,153,0.15)",
+              color: "#ec4899",
+              border: "1px solid rgba(236,72,153,0.3)",
+              padding: "2px 8px",
+              borderRadius: 4,
+              fontWeight: 800,
+            }}
+          >
+            CRISIS {formatElapsed(elapsedSeconds)}
           </span>
         </div>
 
-        {/* Viral Scheduled Tweet that sparked the outrage */}
-        <div style={{ padding: 16, background: "#0b101c", borderBottom: "1px solid #1e293b" }}>
-          <div style={{ fontSize: 10, color: "#f59e0b", fontWeight: 700, marginBottom: 4 }}>
-            INCITING POST (SCHEDULED TWEET):
-          </div>
-          <div style={{ fontSize: 13, color: "#fff", fontWeight: 600, marginBottom: 6 }}>
-            @AuraCommerce: "Ready to splurge this Black Friday? Shop till you drop! 🛍️✨"
-          </div>
-          <div style={{ fontSize: 10, color: "#64748b" }}>
-            Sent 15m ago • 2,410 Retweets • 8,920 Quote Tweets (94% Negative Sentiment)
-          </div>
+        {/* 3 Sub-Environment Tab Switcher */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <button
+            onClick={() => handleNavigate("listening")}
+            style={{
+              background: activeSubEnv === "listening" ? "rgba(236,72,153,0.2)" : "#0b101c",
+              border: activeSubEnv === "listening" ? "1px solid #ec4899" : "1px solid #1e293b",
+              color: activeSubEnv === "listening" ? "#ec4899" : "#94a3b8",
+              fontSize: 11,
+              fontWeight: 800,
+              padding: "6px 14px",
+              borderRadius: 6,
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+          >
+            01 // SOCIAL LISTENING & SENTIMENT
+          </button>
+
+          <button
+            onClick={() => handleNavigate("studio")}
+            style={{
+              background: activeSubEnv === "studio" ? "rgba(236,72,153,0.2)" : "#0b101c",
+              border: activeSubEnv === "studio" ? "1px solid #ec4899" : "1px solid #1e293b",
+              color: activeSubEnv === "studio" ? "#ec4899" : "#94a3b8",
+              fontSize: 11,
+              fontWeight: 800,
+              padding: "6px 14px",
+              borderRadius: 6,
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+          >
+            02 // RESPONSE STUDIO
+          </button>
+
+          <button
+            onClick={() => handleNavigate("command")}
+            style={{
+              background: activeSubEnv === "command" ? "rgba(236,72,153,0.2)" : "#0b101c",
+              border: activeSubEnv === "command" ? "1px solid #ec4899" : "1px solid #1e293b",
+              color: activeSubEnv === "command" ? "#ec4899" : "#94a3b8",
+              fontSize: 11,
+              fontWeight: 800,
+              padding: "6px 14px",
+              borderRadius: 6,
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+          >
+            03 // CRISIS COMMAND & PRESS
+          </button>
         </div>
 
-        {/* Live Mentions Stream */}
-        <div style={{ flex: 1, padding: 16, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
-          {mentions.map((m, i) => (
+        {/* Real-time Status & 3D Observer Toggle */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {/* Sentiment Pill */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: sentiment > 60 ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
+              border: sentiment > 60 ? "1px solid #22c55e" : "1px solid #ef4444",
+              padding: "4px 10px",
+              borderRadius: 4,
+              fontSize: 10,
+              fontWeight: 800,
+              color: sentiment > 60 ? "#22c55e" : "#ef4444",
+            }}
+          >
+            <span>{sentiment > 60 ? "💚" : "🔥"}</span>
+            <span>SENTIMENT: {sentiment}% ({sentiment > 60 ? "SUPPORTIVE" : "HOSTILE"})</span>
+          </div>
+
+          {/* 3D Observer HUD Toggle Button */}
+          <button
+            onClick={() => setShowObserverHud(!showObserverHud)}
+            style={{
+              background: showObserverHud ? "rgba(236,72,153,0.2)" : "rgba(255,255,255,0.06)",
+              border: showObserverHud ? "1px solid #ec4899" : "1px solid #334155",
+              color: showObserverHud ? "#ec4899" : "#cbd5e1",
+              fontSize: 10,
+              fontWeight: 800,
+              padding: "5px 12px",
+              borderRadius: 4,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span>◈</span>
+            <span>{showObserverHud ? "HIDE 3D OBSERVER" : "SHOW 3D OBSERVER"}</span>
+          </button>
+        </div>
+      </header>
+
+      {/* ─── MAIN WORKSPACE AREA WITH OPTIONAL 3D OBSERVER HUD ─── */}
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
+        {/* Active Sub-Environment View */}
+        <div style={{ flex: 1, height: "100%", overflow: "hidden" }}>
+          {activeSubEnv === "listening" && (
+            <SocialListeningSubEnv
+              sessionId={sessionId}
+              sentiment={sentiment}
+              setSentiment={setSentiment}
+              mentions={mentions}
+              setMentions={setMentions}
+              pressInquiries={pressInquiries}
+              setPressInquiries={setPressInquiries}
+              publishedStatement={publishedStatement}
+              setPublishedStatement={setPublishedStatement}
+              onAction={onAction}
+              onComplete={onComplete}
+              demoMode={demoMode}
+              navigateToSubEnv={handleNavigate}
+            />
+          )}
+
+          {activeSubEnv === "studio" && (
+            <BrandContentStudioSubEnv
+              sessionId={sessionId}
+              sentiment={sentiment}
+              setSentiment={setSentiment}
+              mentions={mentions}
+              setMentions={setMentions}
+              pressInquiries={pressInquiries}
+              setPressInquiries={setPressInquiries}
+              publishedStatement={publishedStatement}
+              setPublishedStatement={setPublishedStatement}
+              onAction={onAction}
+              onComplete={onComplete}
+              demoMode={demoMode}
+              navigateToSubEnv={handleNavigate}
+            />
+          )}
+
+          {activeSubEnv === "command" && (
+            <CrisisCommandSubEnv
+              sessionId={sessionId}
+              sentiment={sentiment}
+              setSentiment={setSentiment}
+              mentions={mentions}
+              setMentions={setMentions}
+              pressInquiries={pressInquiries}
+              setPressInquiries={setPressInquiries}
+              publishedStatement={publishedStatement}
+              setPublishedStatement={setPublishedStatement}
+              onAction={onAction}
+              onComplete={onComplete}
+              demoMode={demoMode}
+              navigateToSubEnv={handleNavigate}
+            />
+          )}
+        </div>
+
+        {/* ─── CLEAN 3D OBSERVER AVATAR / SCENE HUD PANEL ─── */}
+        <AnimatePresence>
+          {showObserverHud && (
             <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 320, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
               style={{
-                background: m.sentiment === "positive" ? "rgba(34,197,94,0.08)" : "#0b101c",
-                border: m.sentiment === "positive" ? "1px solid #22c55e" : "1px solid #1e293b",
-                borderRadius: 8,
-                padding: 12,
+                height: "100%",
+                background: "#04060c",
+                borderLeft: "1px solid #1e293b",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+                zIndex: 10,
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 800, color: m.sentiment === "positive" ? "#22c55e" : "#fff" }}>
-                  {m.user}
-                </span>
-                <span style={{ fontSize: 10, color: "#64748b" }}>{m.time}</span>
-              </div>
-              <div style={{ fontSize: 12, color: "#cbd5e1", lineHeight: 1.5, marginBottom: 6 }}>
-                {m.text}
-              </div>
-              <div style={{ fontSize: 10, color: "#64748b" }}>❤️ {m.likes}</div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
-      {/* RIGHT: SENTIMENT DIAL & RESPONSE COMPOSER */}
-      <div style={{ background: "#080c16", display: "flex", flexDirection: "column" }}>
-        {/* Sentiment Dial Gauge */}
-        <div style={{ padding: 20, borderBottom: "1px solid #1e293b", textAlign: "center" }}>
-          <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 700, marginBottom: 12 }}>
-            REAL-TIME PUBLIC SENTIMENT
-          </div>
-
-          <div style={{ position: "relative", width: 180, height: 100, margin: "0 auto" }}>
-            <svg viewBox="0 0 180 100" style={{ width: "100%", height: "100%" }}>
-              {/* Dial track */}
-              <path d="M 20,90 A 70,70 0 0,1 160,90" fill="none" stroke="#1e293b" strokeWidth="12" strokeLinecap="round" />
-              {/* Dial active arc */}
-              <motion.path
-                d="M 20,90 A 70,70 0 0,1 160,90"
-                fill="none"
-                stroke={sentiment > 60 ? "#22c55e" : sentiment > 40 ? "#f59e0b" : "#ef4444"}
-                strokeWidth="12"
-                strokeDasharray="220"
-                strokeDashoffset={220 - (sentiment / 100) * 220}
-                strokeLinecap="round"
-                animate={{ strokeDashoffset: 220 - (sentiment / 100) * 220 }}
-                transition={{ duration: 0.8 }}
-              />
-            </svg>
-            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center" }}>
-              <div style={{ fontSize: 24, fontWeight: 900, color: sentiment > 60 ? "#22c55e" : "#ef4444" }}>
-                {sentiment}%
-              </div>
-              <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase" }}>
-                {sentiment > 60 ? "SUPPORTIVE" : "HOSTILE"}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Brand Guidelines */}
-        <div style={{ padding: 14, background: "#0b101c", borderBottom: "1px solid #1e293b", fontSize: 10, color: "#94a3b8", lineHeight: 1.5 }}>
-          <span style={{ color: "#38bdf8", fontWeight: 700 }}>Brand Voice Guidelines:</span>
-          <div>1. Own the glitch directly. Never blame users or external banks.</div>
-          <div>2. State immediate resolution: all double authorizations auto-refunded.</div>
-        </div>
-
-        {/* Response Chooser */}
-        <div style={{ flex: 1, padding: 16, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 700 }}>
-            Select Crisis Response Tweet:
-          </div>
-
-          {responseOptions.map((opt) => (
-            <div
-              key={opt.id}
-              onClick={() => handlePublish(opt.id)}
-              style={{
-                padding: 14,
-                background: selectedResponse === opt.id ? "rgba(34,197,94,0.15)" : "rgba(11,16,28,0.7)",
-                border: selectedResponse === opt.id ? "1px solid #22c55e" : "1px solid #1e293b",
-                borderRadius: 4,
-                cursor: "pointer",
-                transition: "all 0.15s ease",
-                boxShadow: selectedResponse === opt.id ? "0 0 15px rgba(34,197,94,0.2)" : "none",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontSize: 10, fontWeight: 800, color: opt.isOptimal ? "#22c55e" : "#f59e0b", letterSpacing: "0.5px" }}>
-                  {opt.title}
-                </span>
-                <span style={{ fontSize: 9, background: "rgba(255,255,255,0.05)", padding: "2px 6px", borderRadius: 3, color: "#94a3b8" }}>
-                  [ TRANSMIT ▶ ]
-                </span>
-              </div>
-              <div style={{ fontSize: 11, color: "#cbd5e1", lineHeight: 1.5, fontFamily: "inherit" }}>
-                "{opt.text}"
-              </div>
-            </div>
-          ))}
-
-          <AnimatePresence>
-            {published && sentiment > 60 && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
+              {/* Observer HUD Header */}
+              <div
                 style={{
-                  marginTop: 10,
-                  padding: 12,
-                  background: "rgba(34,197,94,0.15)",
-                  border: "1px solid #22c55e",
-                  borderRadius: 6,
-                  textAlign: "center",
+                  padding: "10px 14px",
+                  background: "#070b16",
+                  borderBottom: "1px solid #1e293b",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
                 }}
               >
-                <div style={{ fontSize: 12, fontWeight: 900, color: "#22c55e" }}>
-                  🎉 PR CRISIS DEFUSED!
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 10, color: "#ec4899", fontWeight: 900 }}>◈ OBSERVER NODE</span>
+                  <span style={{ fontSize: 9, background: "rgba(236,72,153,0.15)", color: "#ec4899", padding: "1px 5px", borderRadius: 3 }}>
+                    LAYER 1
+                  </span>
                 </div>
-                <div style={{ fontSize: 10, color: "#94a3b8" }}>
-                  Community sentiment turned supportive. Routing to evaluation...
+                <button
+                  onClick={() => setShowObserverHud(false)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#64748b",
+                    fontSize: 14,
+                    cursor: "pointer",
+                    padding: 0,
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* 3D Avatar Scene Embedded */}
+              <div style={{ width: "100%", height: 260, position: "relative", background: "#020202" }}>
+                <AvatarScene analyserNode={analyserNode} domain="brand" onInteract={onAction} />
+              </div>
+
+              {/* Cognitive Telemetry & Heuristics */}
+              <div style={{ flex: 1, padding: 14, display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
+                <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 800, letterSpacing: "0.5px" }}>
+                  META-COGNITIVE TELEMETRY:
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+
+                {/* Behavioral Meters */}
+                <div style={{ background: "#080c18", border: "1px solid #1e293b", borderRadius: 6, padding: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "#cbd5e1", marginBottom: 3 }}>
+                    <span>Accountability Calibration</span>
+                    <span style={{ color: publishedStatement?.isOptimal ? "#22c55e" : "#f59e0b", fontWeight: 800 }}>
+                      {publishedStatement?.isOptimal ? "96%" : "Testing"}
+                    </span>
+                  </div>
+                  <div style={{ height: 4, background: "#1e293b", borderRadius: 2, overflow: "hidden" }}>
+                    <div
+                      style={{
+                        width: publishedStatement?.isOptimal ? "96%" : "45%",
+                        height: "100%",
+                        background: publishedStatement?.isOptimal ? "#22c55e" : "#f59e0b",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ background: "#080c18", border: "1px solid #1e293b", borderRadius: 6, padding: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "#cbd5e1", marginBottom: 3 }}>
+                    <span>Media Response Velocity</span>
+                    <span style={{ color: "#38bdf8", fontWeight: 800 }}>
+                      {pressInquiries.filter((p) => p.status === "responded").length} / {pressInquiries.length} answered
+                    </span>
+                  </div>
+                  <div style={{ height: 4, background: "#1e293b", borderRadius: 2, overflow: "hidden" }}>
+                    <div
+                      style={{
+                        width: `${(pressInquiries.filter((p) => p.status === "responded").length / pressInquiries.length) * 100}%`,
+                        height: "100%",
+                        background: "#38bdf8",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ background: "#080c18", border: "1px solid #1e293b", borderRadius: 6, padding: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "#cbd5e1", marginBottom: 3 }}>
+                    <span>Public Sentiment Equilibrium</span>
+                    <span style={{ color: sentiment > 60 ? "#22c55e" : "#ef4444", fontWeight: 800 }}>
+                      {sentiment}%
+                    </span>
+                  </div>
+                  <div style={{ height: 4, background: "#1e293b", borderRadius: 2, overflow: "hidden" }}>
+                    <div
+                      style={{
+                        width: `${sentiment}%`,
+                        height: "100%",
+                        background: sentiment > 60 ? "#22c55e" : "#ef4444",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Active Observer Log */}
+                <div style={{ marginTop: 4 }}>
+                  <div style={{ fontSize: 9, color: "#64748b", fontWeight: 700, marginBottom: 4 }}>
+                    ACTIVE HEURISTIC OBSERVATIONS:
+                  </div>
+                  <div style={{ fontSize: 9, color: "#94a3b8", lineHeight: 1.5, display: "flex", flexDirection: "column", gap: 4 }}>
+                    <div>• Maya Lin tracking crisis communication transparency.</div>
+                    <div>• Viral quote-tweet velocity monitored at 412 mentions/min.</div>
+                    {publishedStatement && (
+                      <div style={{ color: publishedStatement.isOptimal ? "#22c55e" : "#f59e0b" }}>
+                        • Statement broadcasted: {publishedStatement.isOptimal ? "Transparent root cause admitted." : "Suboptimal tone detected."}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

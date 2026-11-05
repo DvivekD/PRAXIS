@@ -30,6 +30,10 @@ export interface VoiceSessionProps {
   scenario?: string;
   /** Specific persona name to roleplay (in persona mode) */
   personaName?: string;
+  /** Specific persona role to roleplay */
+  personaRole?: string;
+  /** Simulation session ID */
+  sessionId?: string;
   /** Prebuilt voice name (e.g. "Aoede" for persona, "Puck" for guide) */
   voice?: string;
   /** Custom system instruction override */
@@ -40,6 +44,8 @@ export interface VoiceSessionProps {
   onAnalyserNodeCreated?: (node: AnalyserNode) => void;
   /** Alias callback for interop with existing simulation page hooks */
   onAnalyserReady?: (analyser: AnalyserNode) => void;
+  /** Alias callback for simulation page */
+  onAnalyserNodeReady?: (analyser: AnalyserNode) => void;
   /** Callback fired on real-time transcript updates from user or model */
   onTranscript?: (role: VoiceAgentRole, text: string) => void;
   /** Callback fired when candidate completes a full spoken turn */
@@ -56,6 +62,10 @@ export interface VoiceSessionProps {
   compact?: boolean;
   /** Automatically connect to voice session on mount. Default: false */
   autoConnect?: boolean;
+  /** Initial engine: 'live' or 'fallback'. Default: 'live' */
+  initialEngine?: "live" | "fallback";
+  /** Custom fallback reply generator */
+  onFallbackReply?: (userText: string) => Promise<string> | string;
   /** Additional CSS class name */
   className?: string;
   /** Custom inline style overrides */
@@ -66,6 +76,54 @@ export const OUTPUT_SAMPLE_RATE = 24000; // Gemini Live 2.0 Flash output is 24kH
 
 interface WebkitAudioWindow extends Window {
   webkitAudioContext?: typeof AudioContext;
+}
+
+interface SpeechRecognitionResultItem {
+  readonly transcript: string;
+  readonly confidence: number;
+}
+
+interface SpeechRecognitionResultItemList {
+  readonly length: number;
+  readonly isFinal: boolean;
+  item(index: number): SpeechRecognitionResultItem;
+  [index: number]: SpeechRecognitionResultItem;
+}
+
+interface SpeechRecognitionResultList {
+  readonly length: number;
+  item(index: number): SpeechRecognitionResultItemList;
+  [index: number]: SpeechRecognitionResultItemList;
+}
+
+interface SpeechRecognitionEventLike {
+  readonly resultIndex: number;
+  readonly results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionErrorEventLike {
+  readonly error: string;
+  readonly message?: string;
+}
+
+interface ISpeechRecognition {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
+  onend: (() => void) | null;
+  onstart: (() => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
+type SpeechRecognitionConstructor = new () => ISpeechRecognition;
+
+interface SpeechRecognitionWindow extends Window {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
 }
 
 /**
@@ -240,11 +298,11 @@ export class SpokenTurnBuffer {
 export interface VoiceSessionHandle {
   /** Pushes contextual telemetry/text to the active Gemini Live session (prefixed with [CONTEXT]) */
   pushContext: (text: string) => void;
-  /** Initiates connection to Gemini Live session */
+  /** Initiates connection to voice session */
   connect: () => Promise<void>;
   /** Alias for connect() matching simulation page naming */
   connectVoice: () => Promise<void>;
-  /** Disconnects active Gemini Live session and tears down Web Audio resources */
+  /** Disconnects active voice session and tears down Web Audio resources */
   disconnect: () => Promise<void>;
   /** Alias for disconnect() matching simulation page naming */
   disconnectVoice: () => Promise<void>;
@@ -258,6 +316,12 @@ export interface VoiceSessionHandle {
   getAnalyserNode: () => AnalyserNode | null;
   /** Prompts the model to speak a proactive spoken response to an action or milestone */
   speakProactiveContext: (prompt: string) => void;
+  /** Speaks custom text using TTS and drives the 3D visualizer */
+  speakText: (text: string) => void;
+  /** Switches between Gemini Live and Local STT/TTS fallback engine */
+  switchEngine: (engine: "live" | "fallback") => void;
+  /** Returns current active engine */
+  getEngine: () => "live" | "fallback";
 }
 
 export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(function VoiceSession({
@@ -266,11 +330,14 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
   problemTitle = "Technical Assessment Simulation",
   scenario = "Live technical interview simulation",
   personaName,
+  personaRole,
+  sessionId,
   voice,
   systemInstruction,
   analyserNode: externalAnalyser,
   onAnalyserNodeCreated,
   onAnalyserReady,
+  onAnalyserNodeReady,
   onTranscript,
   onUserTurn,
   onToolCall,
@@ -279,10 +346,13 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
   showAvatar = true,
   compact = false,
   autoConnect = false,
+  initialEngine = "live",
+  onFallbackReply,
   className,
   style,
 }: VoiceSessionProps, ref): React.JSX.Element {
   const [status, setStatus] = useState<VoiceSessionStatus>("disconnected");
+  const [engine, setEngine] = useState<"live" | "fallback">(initialEngine);
   const [internalAnalyser, setInternalAnalyser] = useState<AnalyserNode | null>(null);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
@@ -300,6 +370,12 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
   const queueRef = useRef<AudioPlaybackQueue | null>(null);
   const turnBufferRef = useRef<SpokenTurnBuffer>(new SpokenTurnBuffer(onUserTurn));
   const isConnectingRef = useRef<boolean>(false);
+
+  // Local STT & TTS Driver refs
+  const recognitionRef = useRef<ISpeechRecognition | null>(null);
+  const ttsDriverOscRef = useRef<OscillatorNode | null>(null);
+  const ttsDriverGainRef = useRef<GainNode | null>(null);
+  const ttsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Keep turn callback updated
   useEffect(() => {
@@ -368,6 +444,7 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
       setInternalAnalyser(analyser);
       onAnalyserReady?.(analyser);
       onAnalyserNodeCreated?.(analyser);
+      onAnalyserNodeReady?.(analyser);
     }
 
     try {
@@ -388,7 +465,7 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
     });
 
     return { audioCtx, gainNode, analyserNode: analyser };
-  }, [externalAnalyser, onAnalyserReady, onAnalyserNodeCreated]);
+  }, [externalAnalyser, onAnalyserReady, onAnalyserNodeCreated, onAnalyserNodeReady]);
 
   /**
    * Stops all active and queued AudioBufferSourceNodes, disconnecting them cleanly.
@@ -427,11 +504,255 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
   );
 
   /**
+   * Stops local TTS frequency driver for 3D avatar lip-sync/pulse.
+   */
+  const stopTtsAudioDriver = useCallback(() => {
+    try {
+      if (ttsIntervalRef.current) {
+        clearInterval(ttsIntervalRef.current);
+        ttsIntervalRef.current = null;
+      }
+      if (ttsDriverOscRef.current) {
+        ttsDriverOscRef.current.stop();
+        ttsDriverOscRef.current.disconnect();
+        ttsDriverOscRef.current = null;
+      }
+      if (ttsDriverGainRef.current) {
+        ttsDriverGainRef.current.disconnect();
+        ttsDriverGainRef.current = null;
+      }
+    } catch {}
+  }, []);
+
+  /**
+   * Drives AnalyserNode frequency bins while Browser SpeechSynthesis is speaking,
+   * guaranteeing the 3D Observer avatar pulses and moves in sync with local TTS audio.
+   */
+  const startTtsAudioDriver = useCallback((analyser: AnalyserNode | null) => {
+    if (!analyser) return;
+    try {
+      const audioCtx = analyser.context as AudioContext;
+      if (audioCtx.state === "suspended") {
+        void audioCtx.resume();
+      }
+      stopTtsAudioDriver();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.0025, audioCtx.currentTime);
+      osc.connect(gain);
+      gain.connect(analyser);
+      osc.start();
+      ttsDriverOscRef.current = osc;
+      ttsDriverGainRef.current = gain;
+
+      let tick = 0;
+      ttsIntervalRef.current = setInterval(() => {
+        if (!ttsDriverOscRef.current || audioCtx.state === "closed") return;
+        tick = (tick + 1) % 8;
+        const targetFreq = 160 + (tick * 40) + (Math.sin(tick) * 25);
+        try {
+          ttsDriverOscRef.current.frequency.setTargetAtTime(targetFreq, audioCtx.currentTime, 0.04);
+        } catch {}
+      }, 90);
+    } catch {}
+  }, [stopTtsAudioDriver]);
+
+  /**
+   * Speaks model responses via Browser SpeechSynthesis with natural cadence,
+   * driving the 3D Avatar visualizer in real time.
+   */
+  const speakFallback = useCallback((textToSpeak: string) => {
+    if (typeof window === "undefined" || !textToSpeak.trim()) return;
+    try {
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(textToSpeak);
+        utterance.rate = 1.02;
+        utterance.pitch = domain === "sales" ? 0.94 : 1.0;
+        
+        utterance.onstart = () => {
+          setIsSpeaking(true);
+          startTtsAudioDriver(activeAnalyser);
+        };
+        utterance.onend = () => {
+          setIsSpeaking(false);
+          stopTtsAudioDriver();
+        };
+        utterance.onerror = () => {
+          setIsSpeaking(false);
+          stopTtsAudioDriver();
+        };
+        window.speechSynthesis.speak(utterance);
+      }
+    } catch {
+      setIsSpeaking(false);
+      stopTtsAudioDriver();
+    }
+  }, [activeAnalyser, domain, startTtsAudioDriver, stopTtsAudioDriver]);
+
+  /**
+   * Contextual evaluator heuristic responder when running in local fallback engine.
+   */
+  const generateFallbackReply = useCallback(async (userText: string): Promise<string> => {
+    if (onFallbackReply) {
+      try {
+        const customRes = await onFallbackReply(userText);
+        if (customRes) return customRes;
+      } catch {}
+    }
+
+    const lower = userText.toLowerCase();
+    if (domain === "sales") {
+      if (lower.includes("fear") || lower.includes("concern") || lower.includes("latency") || lower.includes("drill") || lower.includes("risk")) {
+        return "The root issue is transaction collisions. When 80,000 shoppers check out simultaneously, a lock contention spike caused 18 duplicate charges in staging. If that happens live, our brand reputation is destroyed.";
+      }
+      if (lower.includes("sla") || lower.includes("atomic") || lower.includes("lock") || lower.includes("concurrency") || lower.includes("uptime")) {
+        return "An atomic lock before card dispatch with zero duplicate charge guarantees sounds solid. What SLA uptime penalty credit will you commit to in the renewal contract?";
+      }
+      if (lower.includes("competitor") || lower.includes("commercecloud") || lower.includes("take rate") || lower.includes("price") || lower.includes("discount")) {
+        return "CommerceCloud claims lower latency, but their 1.25% take rate adds over $175,000 in fees. If you can provide a multi-year volume discount and guaranteed SLA, we are ready to sign.";
+      }
+      if (lower.includes("demo") || lower.includes("meeting") || lower.includes("architect") || lower.includes("tomorrow") || lower.includes("schedule")) {
+        return "Deal. Let's schedule 15 minutes tomorrow with our technical team to finalize the architecture review and lock in the renewal.";
+      }
+      return `I hear you on "${userText.slice(0, 45)}". Let's resolve the checkout concurrency and finalize our SLA terms today.`;
+    }
+    if (domain === "engineering") {
+      if (lower.includes("hint") || lower.includes("look") || lower.includes("where") || lower.includes("help") || lower.includes("race")) {
+        return "Investigate the order lock acquisition loop in orderProcessor.ts around line 42. Notice the concurrent thread contention without atomic rollback guards.";
+      }
+      return `Observer telemetry logged: "${userText.slice(0, 40)}". Review process locks, worker thread pools, and socket timeouts.`;
+    }
+    if (domain === "sre") {
+      return "Notice the Grafana p99 latency spike on the payment gateway after the v2.4.1 deployment. Consider initiating a rollback to revision 3.";
+    }
+    if (domain === "data") {
+      return "Inspect the JOIN between users and sessions for duplicate rows, and check the Airflow DAG transform node for schema drift.";
+    }
+    if (domain === "product") {
+      return "Address the 42.8% checkout funnel drop-off on iOS Safari before modifying promotional banners.";
+    }
+    if (domain === "support") {
+      return "Examine the duplicate gateway authorization for transaction 8819 and check for missing idempotency keys.";
+    }
+    if (domain === "brand") {
+      return "Draft a transparent holding statement addressing checkout delay, and engage key tech influencers with empathy.";
+    }
+    return `Candidate, I copy: "${userText.slice(0, 40)}". Focus on root cause isolation and systematic verification.`;
+  }, [domain, onFallbackReply]);
+
+  /**
+   * Starts local Web SpeechRecognition for zero-latency microphone transcription.
+   */
+  const startFallbackRecognition = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const win = window as unknown as SpeechRecognitionWindow;
+    const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
+    if (!SpeechRec) {
+      console.warn("[VoiceSession] Web SpeechRecognition is not supported in this browser.");
+      return;
+    }
+
+    try {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch {}
+        recognitionRef.current = null;
+      }
+      const rec = new SpeechRec();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = "en-US";
+
+      rec.onresult = (event: SpeechRecognitionEventLike) => {
+        let interim = "";
+        let finalChunk = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const res = event.results[i];
+          if (res) {
+            const transcript = res[0]?.transcript || "";
+            if (res.isFinal) {
+              finalChunk += transcript + " ";
+            } else {
+              interim += transcript;
+            }
+          }
+        }
+
+        // Barge-in: candidate started speaking -> cancel any ongoing TTS speech immediately
+        if (typeof window !== "undefined" && "speechSynthesis" in window && window.speechSynthesis.speaking) {
+          window.speechSynthesis.cancel();
+          setIsSpeaking(false);
+          stopTtsAudioDriver();
+        }
+
+        const candidateSpeech = (finalChunk || interim).trim();
+        if (candidateSpeech) {
+          onTranscript?.("user", candidateSpeech);
+          turnBufferRef.current.append(candidateSpeech);
+        }
+
+        if (finalChunk.trim()) {
+          const completedTurn = turnBufferRef.current.flush();
+          if (completedTurn) {
+            onUserTurn?.(completedTurn);
+            void generateFallbackReply(completedTurn).then((reply) => {
+              onTranscript?.("model", reply);
+              setRecentTranscripts((prev) => [
+                ...prev.slice(-3),
+                { id: Math.random().toString(36).substring(2, 9), role: "user", text: completedTurn, timestamp: Date.now() },
+                { id: Math.random().toString(36).substring(2, 9), role: "model", text: reply, timestamp: Date.now() }
+              ]);
+              speakFallback(reply);
+            });
+          }
+        }
+      };
+
+      rec.onerror = (errEvent: SpeechRecognitionErrorEventLike) => {
+        if (errEvent.error !== "no-speech" && errEvent.error !== "aborted") {
+          console.warn("[VoiceSession] Speech recognition error:", errEvent.error);
+        }
+      };
+
+      rec.onend = () => {
+        // Automatically restart continuous recognition if session is connected, in fallback mode, and not muted
+        if (recognitionRef.current === rec && !isMuted) {
+          try { rec.start(); } catch {}
+        }
+      };
+
+      rec.start();
+      recognitionRef.current = rec;
+    } catch (err) {
+      console.warn("[VoiceSession] Failed to start SpeechRecognition:", err);
+    }
+  }, [generateFallbackReply, isMuted, onTranscript, onUserTurn, speakFallback, stopTtsAudioDriver]);
+
+  /**
+   * Stops local Web SpeechRecognition cleanly.
+   */
+  const stopFallbackRecognition = useCallback(() => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.onend = null;
+        recognitionRef.current.stop();
+      } catch {}
+      recognitionRef.current = null;
+    }
+  }, []);
+
+  /**
    * Handles barge-in / interruption: immediately stops playback so model voice stops speaking.
    */
   const handleInterrupted = useCallback(() => {
     stopAllPlayback();
-  }, [stopAllPlayback]);
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    stopTtsAudioDriver();
+  }, [stopAllPlayback, stopTtsAudioDriver]);
 
   /**
    * Handles tool call dispatch and automated acknowledgement.
@@ -461,6 +782,11 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
    */
   const disconnectVoice = useCallback(async () => {
     stopAllPlayback();
+    stopFallbackRecognition();
+    stopTtsAudioDriver();
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
     turnBufferRef.current.clear();
 
     if (agentRef.current) {
@@ -502,10 +828,10 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
     setIsSpeaking(false);
     setStatus("disconnected");
     onStatusChange?.("disconnected");
-  }, [stopAllPlayback, onStatusChange]);
+  }, [stopAllPlayback, stopFallbackRecognition, stopTtsAudioDriver, onStatusChange]);
 
   /**
-   * Connects to Gemini Live session.
+   * Connects to Gemini Live session or Local STT/TTS Fallback.
    */
   const connectVoice = useCallback(async () => {
     if (status === "connecting" || status === "connected" || isConnectingRef.current) {
@@ -515,6 +841,27 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
     setErrorMessage(null);
     setStatus("connecting");
     onStatusChange?.("connecting");
+
+    // Local Fallback Engine Mode
+    if (engine === "fallback") {
+      try {
+        const { audioCtx } = initAudioGraph();
+        if (audioCtx.state === "suspended") {
+          await audioCtx.resume();
+        }
+        setStatus("connected");
+        onStatusChange?.("connected");
+        startFallbackRecognition();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setStatus("error");
+        setErrorMessage(msg);
+        onStatusChange?.("error", msg);
+      } finally {
+        isConnectingRef.current = false;
+      }
+      return;
+    }
 
     try {
       // 1. Initialize Web Audio playback graph and resume from user gesture
@@ -596,6 +943,7 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
     }
   }, [
     status,
+    engine,
     initAudioGraph,
     mode,
     systemInstruction,
@@ -611,12 +959,50 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
     onTranscript,
     onStatusChange,
     disconnectVoice,
+    startFallbackRecognition,
   ]);
 
   /**
-   * Toggles microphone mute state via VoiceAgent hardware controls.
+   * Switches dynamically between Gemini Live and Local STT+TTS engine.
+   */
+  const switchEngine = useCallback((targetEngine: "live" | "fallback") => {
+    setEngine(targetEngine);
+    if (targetEngine === "fallback") {
+      setErrorMessage(null);
+      if (agentRef.current) {
+        void agentRef.current.disconnect();
+        agentRef.current = null;
+      }
+      initAudioGraph();
+      setStatus("connected");
+      onStatusChange?.("connected");
+      startFallbackRecognition();
+      speakFallback(domain === "sales" ? "Sam Jenkins here. Local speech channel online." : "Observer local speech channel active.");
+    } else {
+      stopFallbackRecognition();
+      stopTtsAudioDriver();
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+      void connectVoice();
+    }
+  }, [connectVoice, domain, initAudioGraph, onStatusChange, speakFallback, startFallbackRecognition, stopFallbackRecognition, stopTtsAudioDriver]);
+
+  /**
+   * Toggles microphone mute state across either engine.
    */
   const toggleMute = useCallback(async () => {
+    if (engine === "fallback") {
+      if (isMuted) {
+        setIsMuted(false);
+        startFallbackRecognition();
+      } else {
+        setIsMuted(true);
+        stopFallbackRecognition();
+      }
+      return;
+    }
+
     const agent = agentRef.current;
     if (!agent || status !== "connected") {
       return;
@@ -635,15 +1021,24 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
       agent.stopMic();
       setIsMuted(true);
     }
-  }, [isMuted, status]);
+  }, [engine, isMuted, startFallbackRecognition, status, stopFallbackRecognition]);
 
   useImperativeHandle(ref, () => ({
     pushContext: (text: string) => {
       agentRef.current?.pushContext(text);
     },
     speakProactiveContext: (prompt: string) => {
-      agentRef.current?.speakProactiveContext?.(prompt);
+      if (engine === "fallback" || !agentRef.current) {
+        speakFallback(prompt);
+      } else {
+        agentRef.current?.speakProactiveContext?.(prompt);
+      }
     },
+    speakText: (text: string) => {
+      speakFallback(text);
+    },
+    switchEngine,
+    getEngine: () => engine,
     connect: connectVoice,
     connectVoice,
     disconnect: disconnectVoice,
@@ -652,7 +1047,7 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
     isMuted: () => isMuted,
     getStatus: () => status,
     getAnalyserNode: () => activeAnalyser,
-  }), [connectVoice, disconnectVoice, toggleMute, isMuted, status, activeAnalyser]);
+  }), [connectVoice, disconnectVoice, toggleMute, isMuted, status, activeAnalyser, engine, speakFallback, switchEngine]);
 
   // Handle autoConnect
   useEffect(() => {
@@ -665,6 +1060,11 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
   useEffect(() => {
     return () => {
       stopAllPlayback();
+      stopFallbackRecognition();
+      stopTtsAudioDriver();
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
       if (agentRef.current) {
         const agent = agentRef.current;
         agentRef.current = null;
@@ -693,7 +1093,7 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
       analyserNodeRef.current = null;
       queueRef.current = null;
     };
-  }, [stopAllPlayback]);
+  }, [stopAllPlayback, stopFallbackRecognition, stopTtsAudioDriver]);
 
   // Status visual attributes
   const getStatusColor = (): string => {
@@ -712,8 +1112,9 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
     if (status === "connecting") return "Connecting...";
     if (status === "connected") {
       if (isMuted) return "Mic Muted";
-      if (isSpeaking) return `Speaking (${mode.toUpperCase()})`;
-      return `Listening (${mode.toUpperCase()})`;
+      const tag = engine === "fallback" ? "LOCAL" : mode.toUpperCase();
+      if (isSpeaking) return `Speaking (${tag})`;
+      return `Listening (${tag})`;
     }
     return "Ready";
   };
@@ -822,7 +1223,7 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
         </div>
       )}
 
-      {/* Error Banner with Retry */}
+      {/* Error Banner with Retry & Local Fallback */}
       {errorMessage && (
         <div
           style={{
@@ -859,6 +1260,22 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
             ⚠️ {errorMessage}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            <button
+              onClick={() => switchEngine("fallback")}
+              style={{
+                backgroundColor: "#38bdf8",
+                color: "#050811",
+                border: "none",
+                borderRadius: 4,
+                padding: "4px 10px",
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              Use Local Fallback
+            </button>
             <button
               onClick={connectVoice}
               style={{
@@ -951,6 +1368,28 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
             {statusLabel}
           </span>
         </div>
+
+        {/* Engine Switch Pill */}
+        <button
+          onClick={() => switchEngine(engine === "live" ? "fallback" : "live")}
+          title="Switch between Gemini Live WebSocket and Local Zero-Latency Speech Engine"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            padding: "3px 8px",
+            background: engine === "fallback" ? "rgba(56,189,248,0.2)" : "rgba(255,255,255,0.06)",
+            border: `1px solid ${engine === "fallback" ? "#38bdf8" : "rgba(255,255,255,0.2)"}`,
+            borderRadius: 12,
+            color: engine === "fallback" ? "#38bdf8" : "#94a3b8",
+            fontSize: 10,
+            fontFamily: "monospace",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          {engine === "fallback" ? "⚡ LOCAL STT/TTS" : "☁ LIVE"}
+        </button>
 
         {/* Domain Badge */}
         {!compact && (

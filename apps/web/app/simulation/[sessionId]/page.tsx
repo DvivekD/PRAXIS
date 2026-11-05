@@ -16,11 +16,12 @@ import WarRoomEnvironment from "../../../components/Environments/WarRoomEnvironm
 import HelpdeskEnvironment from "../../../components/Environments/HelpdeskEnvironment";
 import SocialCommandEnvironment from "../../../components/Environments/SocialCommandEnvironment";
 import DemoPitchGuide from "../../../components/Environments/DemoPitchGuide";
+import ObserverWidget from "../../../components/Avatar/ObserverWidget";
 
 const DOMAIN_THEMES: Record<string, { accent: string; accentDim: string; label: string }> = {
   engineering: { accent: "#00ff41", accentDim: "rgba(0,255,65,0.15)", label: "ENGINEERING // TERMINAL" },
   sales: { accent: "#f59e0b", accentDim: "rgba(245,158,11,0.15)", label: "SALES // CALL CONSOLE" },
-  product: { accent: "#818cf8", accentDim: "rgba(129,140,248,0.15)", label: "PRODUCT // INBOX" },
+  product: { accent: "#818cf8", accentDim: "rgba(129,140,248,0.15)", label: "PRODUCT // LAUNCH TRIAGE SUITE" },
   data: { accent: "#06b6d4", accentDim: "rgba(6,182,212,0.15)", label: "DATA // SQL STUDIO" },
   sre: { accent: "#ef4444", accentDim: "rgba(239,68,68,0.15)", label: "SRE // INCIDENT WAR ROOM" },
   support: { accent: "#10b981", accentDim: "rgba(16,185,129,0.15)", label: "CUSTOMER SUPPORT // HELPDESK" },
@@ -34,6 +35,7 @@ function SimulationContent() {
   const sessionId = (params?.sessionId as string) || "";
   const domainRaw = (searchParams?.get("domain") || "engineering").toLowerCase();
   const skin = searchParams?.get("skin") || "ide";
+  const subEnvParam = searchParams?.get("subEnv");
   const demoParam = searchParams?.get("demo");
   const demoMode = demoParam === "true" || demoParam === "1";
 
@@ -42,6 +44,7 @@ function SimulationContent() {
   const theme = DOMAIN_THEMES[domain] || DOMAIN_THEMES.engineering;
 
   // ─── ALL HOOKS MUST RESIDE AT THE TOP LEVEL (RULES OF HOOKS) ───
+  const [subEnv, setSubEnv] = useState<number>(Number(subEnvParam) || 1);
   const [scenarioDesc, setScenarioDesc] = useState("");
   const [problemTitle, setProblemTitle] = useState("");
   const [messages, setMessages] = useState<{ role: string; content: string; persona?: string }[]>([]);
@@ -192,6 +195,7 @@ function SimulationContent() {
         const state = JSON.parse(stored);
         if (state?.currentScenario) setScenarioDesc(state.currentScenario);
         if (state?.problemTitle) setProblemTitle(state.problemTitle);
+        if (state?.subEnv) setSubEnv(Number(state.subEnv));
         if (state?.activePersona) setActivePerson(state.activePersona);
         if (state?.cognitiveLoadScore) setCognitiveLoad(state.cognitiveLoadScore);
         if (state?.dimensionalScores) setDimensions(state.dimensionalScores);
@@ -251,6 +255,8 @@ function SimulationContent() {
             voiceMode={voiceMode}
             setVoiceMode={setVoiceMode}
             analyserNode={analyserNode}
+            initialSubEnv={subEnv}
+            onSubEnvChange={(newSub) => setSubEnv(newSub)}
           />
         );
 
@@ -261,6 +267,8 @@ function SimulationContent() {
             onAction={handleInteract}
             onComplete={() => router.push(`/results/${sessionId}`)}
             demoMode={demoMode}
+            initialSubEnv={subEnv}
+            onSubEnvChange={(newSub) => setSubEnv(newSub)}
           />
         );
 
@@ -271,6 +279,8 @@ function SimulationContent() {
             onAction={handleInteract}
             onComplete={() => router.push(`/results/${sessionId}`)}
             demoMode={demoMode}
+            initialSubEnv={subEnv}
+            onSubEnvChange={(newSub) => setSubEnv(newSub)}
           />
         );
 
@@ -281,6 +291,9 @@ function SimulationContent() {
             onAction={handleInteract}
             onComplete={() => router.push(`/results/${sessionId}`)}
             demoMode={demoMode}
+            analyserNode={analyserNode}
+            initialSubEnv={subEnv}
+            onSubEnvChange={(newSub) => setSubEnv(newSub)}
           />
         );
 
@@ -291,6 +304,8 @@ function SimulationContent() {
             onAction={handleInteract}
             onComplete={() => router.push(`/results/${sessionId}`)}
             demoMode={demoMode}
+            initialSubEnv={subEnv}
+            onSubEnvChange={(newSub) => setSubEnv(newSub)}
           />
         );
 
@@ -301,6 +316,9 @@ function SimulationContent() {
             onAction={handleInteract}
             onComplete={() => router.push(`/results/${sessionId}`)}
             demoMode={demoMode}
+            analyserNode={analyserNode}
+            initialSubEnv={subEnv}
+            onSubEnvChange={(newSub) => setSubEnv(newSub)}
           />
         );
 
@@ -312,6 +330,9 @@ function SimulationContent() {
             onAction={handleInteract}
             onComplete={() => router.push(`/results/${sessionId}`)}
             demoMode={demoMode}
+            analyserNode={analyserNode}
+            initialSubEnv={subEnv}
+            onSubEnvChange={(newSub) => setSubEnv(newSub)}
           />
         );
     }
@@ -322,14 +343,46 @@ function SimulationContent() {
       {/* Floating Pitch Walkthrough Cheat-Sheet for Judges */}
       <DemoPitchGuide
         domain={domain}
-        onQuickSolve={() => {
+        onQuickSolve={async () => {
           handleInteract(`[DEMO_QUICK_SOLVE] Candidate executed pitch walkthrough for ${domain}`);
+          if (domain === "product") {
+            try {
+              const { dispatchLaunchProtocolAction } = await import("../../../actions/eval");
+              await dispatchLaunchProtocolAction(sessionId, {
+                deployFreeze: true,
+                sev1Escalated: true,
+                marketingBlastPaused: true,
+                merchantReassured: true,
+                executiveSummary: "Demo Quick Solve: Cleared all Black Friday launch triage gates. Enforced deployment freeze on gift cards, prioritized Sev-1 idempotency hotfix, and paused 500k marketing blast.",
+                decisions: {
+                  email_1: "Declare Sev-1 & route to Alex in Engineering",
+                  email_2: "Reassure VIP: Patch in progress, zero risk of data loss",
+                  email_3: "Hold: Freeze all deployments until checkout bug is fixed",
+                  email_4: "Hold email blast until checkout fix is verified",
+                  email_5: "Acknowledge anomaly & isolate payment step in analytics",
+                },
+              });
+            } catch {}
+          }
           setTimeout(() => router.push(`/results/${sessionId}`), 2200);
         }}
       />
 
       {/* Primary Immersive Work Environment */}
       {renderDomainEnvironment()}
+
+      {/* 3D Observer Avatar Scene (Three.js WebGL reactive core) - only when not embedded in domain HUD */}
+      {domain !== "engineering" && domain !== "sre" && (
+        <ObserverWidget
+          domain={domain}
+          analyserNode={analyserNode}
+          onInteract={handleInteract}
+          cognitiveLoad={cognitiveLoad}
+          voiceMode={voiceMode}
+          activePersonaName={activePerson.name}
+          activePersonaRole={activePerson.role}
+        />
+      )}
 
       {/* Hidden Persistent Voice Agent Container (Gemini Live WebSocket) */}
       <div style={{ display: "none" }}>

@@ -2,81 +2,77 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { SCOPE_DEFINITIONS } from "../../lib/services/problemBank";
 
-const DOMAINS = [
+const DOMAIN_CARDS = [
   {
     id: "engineering",
     title: "Software Engineering",
-    desc: "Debug a critical concurrency double-charge race condition in a live SSH Linux terminal.",
     icon: "💻",
-    gradient: "linear-gradient(135deg, #00ff41, #10b981)",
     accent: "#00ff41",
-    tags: ["Live Terminal", "Concurrency", "Jest Test Suite"],
+    gradient: "linear-gradient(135deg, #00ff41, #10b981)",
+    desc: "Debug a critical concurrency double-charge race condition in an authentic Linux terminal & IDE.",
   },
   {
     id: "sales",
-    title: "Sales & Partnerships",
-    desc: "Conduct a live voice call with Sam Jenkins (Nordic Goods) to secure a $250k enterprise renewal.",
+    title: "Sales & Commercial",
     icon: "📞",
-    gradient: "linear-gradient(135deg, #f59e0b, #d97706)",
     accent: "#f59e0b",
-    tags: ["Softphone Console", "Gemini Live Voice", "Demo Star ⭐"],
+    gradient: "linear-gradient(135deg, #f59e0b, #d97706)",
+    desc: "Conduct a live call with Sam Jenkins (Nordic Goods) to save a $250k enterprise renewal.",
   },
   {
     id: "product",
     title: "Product Management",
-    desc: "Triage incoming executive stakeholder emails and enforce a Black Friday Sev-1 freeze.",
     icon: "📋",
-    gradient: "linear-gradient(135deg, #818cf8, #6366f1)",
     accent: "#818cf8",
-    tags: ["Executive Inbox", "Sev-1 Triage", "Trade-offs"],
+    gradient: "linear-gradient(135deg, #818cf8, #6366f1)",
+    desc: "Triage executive emails, manage sprint backlog, and design checkout A/B experiments.",
   },
   {
     id: "data",
     title: "Data & Analytics",
-    desc: "Investigate an anomalous 40% DAU spike and restore query integrity using DISTINCT.",
     icon: "📊",
-    gradient: "linear-gradient(135deg, #06b6d4, #0284c7)",
     accent: "#06b6d4",
-    tags: ["SQL Workspace", "Chart Animation", "Data Integrity"],
+    gradient: "linear-gradient(135deg, #06b6d4, #0284c7)",
+    desc: "Investigate why DAU dropped 18% using SQL, repair failing ETL DAGs, and build BI reports.",
   },
   {
     id: "sre",
     title: "SRE & Incident Ops",
-    desc: "Take command of an active Sev-1 war room, diagnose 42% 5xx errors, and execute a 1-click rollback.",
     icon: "🚨",
-    gradient: "linear-gradient(135deg, #ef4444, #b91c1c)",
     accent: "#ef4444",
-    tags: ["Incident War Room", "Telemetry Charts", "Rollback"],
+    gradient: "linear-gradient(135deg, #ef4444, #b91c1c)",
+    desc: "Take command of an active Sev-1 war room, diagnose 42% 5xx errors, and execute a 1-click rollback.",
   },
   {
     id: "support",
     title: "Customer Support",
-    desc: "Spot duplicate billing patterns across the ticket queue and execute a unified batch escalation.",
     icon: "🎧",
-    gradient: "linear-gradient(135deg, #10b981, #059669)",
     accent: "#10b981",
-    tags: ["Helpdesk Queue", "SLA Timers", "Tone Selector"],
+    gradient: "linear-gradient(135deg, #10b981, #059669)",
+    desc: "Resolve 120-ticket backlog, inspect payment ledger, and execute unified batch escalation.",
   },
   {
     id: "brand",
-    title: "Social & Brand Crisis",
-    desc: "Defuse a viral social media backlash with an authentic, accountable statement that swings the sentiment dial.",
+    title: "Brand & Social Crisis",
     icon: "📱",
-    gradient: "linear-gradient(135deg, #ec4899, #be185d)",
     accent: "#ec4899",
-    tags: ["Crisis Command", "Sentiment Dial", "Public Statement"],
+    gradient: "linear-gradient(135deg, #ec4899, #be185d)",
+    desc: "Defuse a viral social backlash, compose executive statements, and swing public sentiment positive.",
   },
 ];
 
 export default function SelectDomainPage() {
   const router = useRouter();
-  const [selected, setSelected] = useState<string | null>("engineering");
+  const [selectedDomain, setSelectedDomain] = useState<string>("engineering");
+  const [selectedSubEnv, setSelectedSubEnv] = useState<number>(1);
 
-  const handleLaunch = () => {
-    if (!selected) return;
-    router.push(`/seeker/dashboard?domain=${selected}`);
+  const activeScopeDef = SCOPE_DEFINITIONS[selectedDomain] || SCOPE_DEFINITIONS.engineering;
+
+  const handleLaunch = (domainId: string, subEnvNum: number = 1) => {
+    router.push(`/seeker/dashboard?domain=${domainId}&subEnv=${subEnvNum}`);
   };
 
   return (
@@ -87,115 +83,187 @@ export default function SelectDomainPage() {
       </div>
 
       {/* Back nav */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        style={{ position: "relative", zIndex: 1, padding: "20px 40px", display: "flex", justifyContent: "space-between", alignItems: "center" }}
-      >
-        <button onClick={() => router.push("/")} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{ position: "relative", zIndex: 1, padding: "20px 40px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <button
+          onClick={() => router.push("/")}
+          style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}
+        >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
           Back to Home
         </button>
         <div style={{ fontSize: 11, color: "#f59e0b", fontFamily: "'JetBrains Mono', monospace", border: "1px solid #f59e0b40", padding: "3px 8px", borderRadius: 4, background: "rgba(245,158,11,0.1)" }}>
-          ⚡ AURA COMMERCE // BLACK FRIDAY CRISIS SIMULATION
+          ⚡ AURA COMMERCE // 7 SCOPES × 3 SUB-ENVIRONMENTS (21 ARENAS)
         </div>
-      </motion.div>
+      </div>
 
-      <div style={{ position: "relative", zIndex: 1, maxWidth: 1100, margin: "0 auto", padding: "20px 24px 80px" }}>
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 1200, margin: "0 auto", padding: "10px 24px 80px" }}>
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} style={{ textAlign: "center", marginBottom: 36 }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: 8, fontFamily: "'JetBrains Mono', monospace" }}>
-            [ STEP 1 // WORKPLACE DOMAIN ]
+            [ STEP 1 // WORKPLACE DOMAIN & SUB-ENVIRONMENT SELECTION ]
           </div>
-          <h1 style={{ fontSize: 36, fontWeight: 900, margin: "0 0 8px", letterSpacing: "-0.02em" }}>
+          <h1 style={{ fontSize: 34, fontWeight: 900, margin: "0 0 8px", letterSpacing: "-0.02em" }}>
             Choose Your Operational Arena
           </h1>
-          <p style={{ fontSize: 14, color: "#94a3b8", margin: 0, maxWidth: 640, marginInline: "auto" }}>
-            Step into a realistic, domain-tailored software environment. Each simulation takes place inside Aura Commerce during the high-stakes hours before Black Friday.
+          <p style={{ fontSize: 14, color: "#94a3b8", margin: 0, maxWidth: 700, marginInline: "auto" }}>
+            Select any of the 7 professional scopes. Each scope contains 3 dedicated, fully interactive sub-environments with authentic software tools, real data, and real-time 3D observer telemetry.
           </p>
-        </motion.div>
+        </div>
 
-        {/* Domain Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16, marginBottom: 36 }}>
-          {DOMAINS.map((domain, i) => {
-            const isSelected = selected === domain.id;
+        {/* 7 Domain Cards Grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 28 }}>
+          {DOMAIN_CARDS.map((card) => {
+            const isSelected = selectedDomain === card.id;
             return (
-              <motion.div
-                key={domain.id}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                onClick={() => setSelected(domain.id)}
+              <button
+                key={card.id}
+                onClick={() => {
+                  setSelectedDomain(card.id);
+                  setSelectedSubEnv(1);
+                }}
                 style={{
-                  padding: 20,
-                  borderRadius: 12,
-                  border: `2px solid ${isSelected ? domain.accent : "rgba(255,255,255,0.08)"}`,
-                  background: isSelected ? "rgba(255,255,255,0.05)" : "#0b101c",
+                  padding: "14px 10px",
+                  borderRadius: 8,
+                  border: `2px solid ${isSelected ? card.accent : "rgba(255,255,255,0.08)"}`,
+                  background: isSelected ? "rgba(255,255,255,0.06)" : "#0b101c",
                   cursor: "pointer",
-                  transition: "all 0.25s ease",
-                  position: "relative",
-                  overflow: "hidden",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 8,
+                  transition: "all 0.2s ease",
+                  textAlign: "center",
                 }}
               >
-                {isSelected && (
-                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: domain.gradient }} />
-                )}
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-                  <span style={{ fontSize: 24 }}>{domain.icon}</span>
-                  <div>
-                    <h3 style={{ fontSize: 17, fontWeight: 800, margin: 0, color: "#fff" }}>{domain.title}</h3>
-                  </div>
-                </div>
-                <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 12px", lineHeight: 1.5 }}>{domain.desc}</p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {domain.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      style={{
-                        fontSize: 10,
-                        padding: "2px 8px",
-                        borderRadius: 4,
-                        background: isSelected ? "rgba(255,255,255,0.1)" : "#1e293b",
-                        color: isSelected ? domain.accent : "#94a3b8",
-                        fontWeight: 600,
-                        fontFamily: "'JetBrains Mono', monospace",
-                      }}
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </motion.div>
+                <span style={{ fontSize: 24 }}>{card.icon}</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: isSelected ? card.accent : "#fff" }}>
+                  {card.title}
+                </span>
+                <span style={{ fontSize: 10, color: "#64748b", fontFamily: "'JetBrains Mono', monospace" }}>
+                  3 Sub-Envs
+                </span>
+              </button>
             );
           })}
         </div>
 
-        {/* Launch button */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ textAlign: "center" }}>
-          <motion.button
-            whileHover={selected ? { scale: 1.03 } : {}}
-            whileTap={selected ? { scale: 0.98 } : {}}
-            onClick={handleLaunch}
-            disabled={!selected}
-            style={{
-              padding: "14px 44px",
-              fontSize: 15,
-              fontWeight: 800,
-              color: "#fff",
-              background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
-              border: "none",
-              borderRadius: 8,
-              cursor: "pointer",
-              boxShadow: "0 8px 24px rgba(99,102,241,0.4)",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 10,
-              fontFamily: "'JetBrains Mono', monospace",
-            }}
-          >
-            ENTER {selected?.toUpperCase()} DASHBOARD ▶
-          </motion.button>
-        </motion.div>
+        {/* Selected Domain Showcase & 3 Sub-Environments */}
+        <div
+          style={{
+            background: "#0a0f1d",
+            border: `1px solid ${activeScopeDef.accent}40`,
+            borderRadius: 12,
+            padding: 28,
+            boxShadow: `0 12px 40px rgba(0,0,0,0.6), 0 0 20px ${activeScopeDef.accent}15`,
+          }}
+        >
+          {/* Active Scope Title Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 11, color: activeScopeDef.accent, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", fontFamily: "'JetBrains Mono', monospace", marginBottom: 4 }}>
+                SCOPE: {activeScopeDef.label.toUpperCase()} // PROJECT STATEMENT
+              </div>
+              <h2 style={{ fontSize: 22, fontWeight: 900, color: "#fff", margin: "0 0 6px" }}>
+                {activeScopeDef.projectTitle}
+              </h2>
+              <p style={{ fontSize: 13, color: "#94a3b8", margin: 0, maxWidth: 800 }}>
+                {activeScopeDef.projectOverview}
+              </p>
+            </div>
+            <button
+              onClick={() => handleLaunch(selectedDomain, selectedSubEnv)}
+              style={{
+                padding: "12px 24px",
+                background: activeScopeDef.accent,
+                color: "#000",
+                fontWeight: 900,
+                fontSize: 12,
+                borderRadius: 6,
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "'JetBrains Mono', monospace",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              LAUNCH SCOPE ▶
+            </button>
+          </div>
+
+          {/* 3 Sub-Environments Grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
+            {activeScopeDef.subEnvironments.map((sub) => {
+              const isSubSelected = selectedSubEnv === sub.subEnv;
+              return (
+                <div
+                  key={sub.id}
+                  onClick={() => setSelectedSubEnv(sub.subEnv)}
+                  style={{
+                    padding: 20,
+                    borderRadius: 10,
+                    border: `1.5px solid ${isSubSelected ? activeScopeDef.accent : "rgba(255,255,255,0.08)"}`,
+                    background: isSubSelected ? "rgba(255,255,255,0.04)" : "#070b16",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "rgba(255,255,255,0.08)", color: activeScopeDef.accent, fontWeight: 800, fontFamily: "'JetBrains Mono', monospace" }}>
+                        SUB-ENV 0{sub.subEnv}
+                      </span>
+                      <span style={{ fontSize: 10, color: "#64748b", fontFamily: "'JetBrains Mono', monospace" }}>
+                        {sub.envType}
+                      </span>
+                    </div>
+
+                    <h3 style={{ fontSize: 15, fontWeight: 800, color: "#fff", margin: "0 0 8px" }}>
+                      {sub.title}
+                    </h3>
+                    <p style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.5, margin: "0 0 12px" }}>
+                      {sub.description}
+                    </p>
+
+                    <div style={{ background: "rgba(0,0,0,0.3)", padding: 10, borderRadius: 6, border: "1px solid rgba(255,255,255,0.05)", fontSize: 11, color: "#cbd5e1", lineHeight: 1.5, marginBottom: 16 }}>
+                      <strong style={{ color: activeScopeDef.accent }}>Problem: </strong>
+                      {sub.problemStatement}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleLaunch(selectedDomain, sub.subEnv);
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      background: isSubSelected ? activeScopeDef.accent : "rgba(255,255,255,0.06)",
+                      color: isSubSelected ? "#000" : "#fff",
+                      fontWeight: 800,
+                      fontSize: 11,
+                      borderRadius: 6,
+                      border: `1px solid ${isSubSelected ? activeScopeDef.accent : "rgba(255,255,255,0.1)"}`,
+                      cursor: "pointer",
+                      fontFamily: "'JetBrains Mono', monospace",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <span>ENTER SUB-ENV 0{sub.subEnv}</span>
+                    <span>▶</span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

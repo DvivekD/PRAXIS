@@ -8,10 +8,11 @@ import * as THREE from "three";
 interface AbstractCoreProps {
   analyserNode: AnalyserNode | null;
   onInteract?: (actionText: string) => void;
+  isSolved?: boolean;
 }
 
 // 0. Onboarding: Base scanning mode
-function OnboardingCore() {
+function OnboardingCore({ onInteract }: { onInteract?: (actionText: string) => void }) {
   const meshRef = useRef<THREE.Mesh>(null);
 
   useFrame((state, delta) => {
@@ -23,7 +24,12 @@ function OnboardingCore() {
 
   return (
     <Float speed={2} rotationIntensity={0.5} floatIntensity={1}>
-      <mesh ref={meshRef}>
+      <mesh
+        ref={meshRef}
+        onClick={() => onInteract?.("[ACTION] Onboarding matrix scan calibrated.")}
+        onPointerOver={() => { document.body.style.cursor = "pointer"; }}
+        onPointerOut={() => { document.body.style.cursor = "default"; }}
+      >
         <boxGeometry args={[1.5, 1.5, 1.5]} />
         <meshBasicMaterial color="#ffffff" wireframe transparent opacity={0.5} />
       </mesh>
@@ -32,7 +38,7 @@ function OnboardingCore() {
 }
 
 // 1. Engineering: Matrix Wireframe Cube / Gear Structure
-function EngineeringCore({ analyserNode }: AbstractCoreProps) {
+function EngineeringCore({ analyserNode, onInteract }: AbstractCoreProps) {
   const outerRef = useRef<THREE.Mesh>(null);
   const innerRef = useRef<THREE.Mesh>(null);
   const midRef = useRef<THREE.Mesh>(null);
@@ -61,7 +67,11 @@ function EngineeringCore({ analyserNode }: AbstractCoreProps) {
 
   return (
     <Float speed={2} rotationIntensity={0.5} floatIntensity={1}>
-      <group>
+      <group
+        onClick={() => onInteract?.("[ACTION] Engineering core diagnostics probed: thread contention monitored.")}
+        onPointerOver={() => { document.body.style.cursor = "pointer"; }}
+        onPointerOut={() => { document.body.style.cursor = "default"; }}
+      >
         <mesh ref={outerRef}>
           <boxGeometry args={[1.8, 1.8, 1.8]} />
           <meshPhysicalMaterial color="#000000" metalness={0.9} roughness={0.1} transparent opacity={0.4} />
@@ -205,7 +215,7 @@ function DataCore({ analyserNode, onInteract }: AbstractCoreProps) {
 }
 
 // 3. Sales: Morphing Audio-Reactive Sphere (Voice Agent)
-function SalesCore({ analyserNode }: AbstractCoreProps) {
+function SalesCore({ analyserNode, onInteract }: AbstractCoreProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const dataArray = useRef(new Uint8Array(128));
 
@@ -230,7 +240,12 @@ function SalesCore({ analyserNode }: AbstractCoreProps) {
 
   return (
     <Float speed={3} rotationIntensity={0.2} floatIntensity={0.5}>
-      <mesh ref={meshRef}>
+      <mesh
+        ref={meshRef}
+        onClick={() => onInteract?.("[ACTION] Sales objection resonance core calibrated: active negotiation monitored.")}
+        onPointerOver={() => { document.body.style.cursor = "pointer"; }}
+        onPointerOut={() => { document.body.style.cursor = "default"; }}
+      >
         <sphereGeometry args={[1.5, 64, 64]} />
         <meshPhysicalMaterial
           color="#f59e0b"
@@ -247,7 +262,7 @@ function SalesCore({ analyserNode }: AbstractCoreProps) {
 }
 
 // 4. Product: Interlocking Torus Knots
-function ProductCore({ analyserNode }: AbstractCoreProps) {
+function ProductCore({ analyserNode, onInteract }: AbstractCoreProps) {
   const meshRef1 = useRef<THREE.Mesh>(null);
   const meshRef2 = useRef<THREE.Mesh>(null);
   const dataArray = useRef(new Uint8Array(128));
@@ -276,7 +291,11 @@ function ProductCore({ analyserNode }: AbstractCoreProps) {
 
   return (
     <Float speed={2} rotationIntensity={1} floatIntensity={1}>
-      <group>
+      <group
+        onClick={() => onInteract?.("[ACTION] Product launch triage nexus scanned: conversion funnel active.")}
+        onPointerOver={() => { document.body.style.cursor = "pointer"; }}
+        onPointerOut={() => { document.body.style.cursor = "default"; }}
+      >
         <mesh ref={meshRef1}>
           <torusGeometry args={[1.5, 0.2, 16, 100]} />
           <meshPhysicalMaterial color="#818cf8" emissive="#4f46e5" roughness={0.2} metalness={0.8} />
@@ -290,14 +309,190 @@ function ProductCore({ analyserNode }: AbstractCoreProps) {
   );
 }
 
-export default function AvatarScene({ analyserNode, domain = "engineering", onInteract }: { analyserNode: AnalyserNode | null, domain?: string, onInteract?: (actionText: string) => void }) {
+// 5. SRE: Alert Octahedron & Orbital Ring Lattice
+function SreCore({ analyserNode, onInteract, isSolved = false }: AbstractCoreProps) {
+  const coreRef = useRef<THREE.Mesh>(null);
+  const ringRef = useRef<THREE.Mesh>(null);
+  const dataArray = useRef(new Uint8Array(128));
+
+  const primaryColor = isSolved ? "#22c55e" : "#ef4444";
+  const emissiveColor = isSolved ? "#15803d" : "#991b1b";
+  const edgeColor = isSolved ? "#86efac" : "#fca5a5";
+
+  useFrame((state, delta) => {
+    if (coreRef.current && ringRef.current) {
+      coreRef.current.rotation.y += delta * (isSolved ? 0.4 : 0.8);
+      coreRef.current.rotation.x += delta * (isSolved ? 0.2 : 0.4);
+      ringRef.current.rotation.z -= delta * (isSolved ? 0.4 : 0.9);
+      ringRef.current.rotation.x += delta * (isSolved ? 0.2 : 0.3);
+
+      let pulse = 0;
+      if (analyserNode) {
+        analyserNode.getByteFrequencyData(dataArray.current);
+        pulse = (dataArray.current[0] / 255) * 0.4;
+      } else {
+        pulse = Math.sin(state.clock.elapsedTime * (isSolved ? 3 : 6)) * (isSolved ? 0.06 : 0.12);
+      }
+
+      const s = (isSolved ? 1.7 : 1.9) + pulse;
+      coreRef.current.scale.lerp(new THREE.Vector3(s, s, s), 0.25);
+    }
+  });
+
+  const handleCoreClick = () => {
+    if (onInteract) {
+      onInteract(
+        isSolved
+          ? "[OBSERVER_PROBE] SRE telemetry diagnostic ping: Cluster reactor healthy. 0.08% SLA nominal."
+          : "[OBSERVER_PROBE] SRE telemetry diagnostic ping dispatched to cluster reactor: High alert state."
+      );
+    }
+  };
+
+  return (
+    <Float speed={isSolved ? 1.5 : 2.5} rotationIntensity={isSolved ? 0.4 : 0.8} floatIntensity={isSolved ? 0.4 : 0.8}>
+      <group onClick={handleCoreClick} onPointerOver={() => { document.body.style.cursor = 'pointer'; }} onPointerOut={() => { document.body.style.cursor = 'default'; }}>
+        <mesh ref={coreRef}>
+          <octahedronGeometry args={[1.5, 0]} />
+          <meshPhysicalMaterial color={primaryColor} emissive={emissiveColor} roughness={0.2} metalness={0.9} transparent opacity={0.85} />
+          <Edges scale={1} threshold={15} color={edgeColor} />
+        </mesh>
+        <mesh ref={ringRef}>
+          <torusGeometry args={[2.3, 0.08, 16, 80]} />
+          <meshBasicMaterial color={primaryColor} wireframe />
+        </mesh>
+      </group>
+    </Float>
+  );
+}
+
+// 6. Support: Harmonic Dodecahedron & Satellite Nodes
+function SupportCore({ analyserNode, onInteract }: AbstractCoreProps) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const satelliteRef = useRef<THREE.Group>(null);
+  const dataArray = useRef(new Uint8Array(128));
+
+  useFrame((state, delta) => {
+    if (meshRef.current && satelliteRef.current) {
+      meshRef.current.rotation.y += delta * 0.35;
+      meshRef.current.rotation.z += delta * 0.25;
+      satelliteRef.current.rotation.y -= delta * 0.6;
+
+      let pulse = 0;
+      if (analyserNode) {
+        analyserNode.getByteFrequencyData(dataArray.current);
+        pulse = (dataArray.current[5] / 255) * 0.35;
+      } else {
+        pulse = Math.sin(state.clock.elapsedTime * 4) * 0.08;
+      }
+
+      const s = 1.7 + pulse;
+      meshRef.current.scale.lerp(new THREE.Vector3(s, s, s), 0.2);
+    }
+  });
+
+  return (
+    <Float speed={2} rotationIntensity={0.4} floatIntensity={0.6}>
+      <group
+        onClick={() => onInteract?.("[ACTION] Customer SLA harmonic stabilizer queried: ticket telemetry active.")}
+        onPointerOver={() => { document.body.style.cursor = "pointer"; }}
+        onPointerOut={() => { document.body.style.cursor = "default"; }}
+      >
+        <mesh ref={meshRef}>
+          <dodecahedronGeometry args={[1.4, 0]} />
+          <meshPhysicalMaterial color="#10b981" emissive="#047857" roughness={0.15} metalness={0.85} clearcoat={1} />
+          <Edges scale={1} threshold={15} color="#6ee7b7" />
+        </mesh>
+        <group ref={satelliteRef}>
+          <mesh position={[2.4, 0.4, 0]}>
+            <tetrahedronGeometry args={[0.3, 0]} />
+            <meshBasicMaterial color="#34d399" wireframe />
+          </mesh>
+          <mesh position={[-2.4, -0.4, 0]}>
+            <tetrahedronGeometry args={[0.3, 0]} />
+            <meshBasicMaterial color="#34d399" wireframe />
+          </mesh>
+        </group>
+      </group>
+    </Float>
+  );
+}
+
+// 7. Brand: Radiant Resonance Wave Spheres
+function BrandCore({ analyserNode, onInteract }: AbstractCoreProps) {
+  const innerRef = useRef<THREE.Mesh>(null);
+  const wave1Ref = useRef<THREE.Mesh>(null);
+  const wave2Ref = useRef<THREE.Mesh>(null);
+  const dataArray = useRef(new Uint8Array(128));
+
+  useFrame((state, delta) => {
+    if (innerRef.current && wave1Ref.current && wave2Ref.current) {
+      innerRef.current.rotation.y += delta * 0.5;
+      wave1Ref.current.rotation.x += delta * 0.3;
+      wave2Ref.current.rotation.y -= delta * 0.4;
+
+      let pulse = 0;
+      if (analyserNode) {
+        analyserNode.getByteFrequencyData(dataArray.current);
+        pulse = (dataArray.current[2] / 255) * 0.4;
+      } else {
+        pulse = Math.sin(state.clock.elapsedTime * 5) * 0.1;
+      }
+
+      const s1 = 1.6 + pulse;
+      const s2 = 2.1 + pulse * 1.2;
+      const s3 = 2.6 + pulse * 1.5;
+      innerRef.current.scale.lerp(new THREE.Vector3(s1, s1, s1), 0.2);
+      wave1Ref.current.scale.lerp(new THREE.Vector3(s2, s2, s2), 0.2);
+      wave2Ref.current.scale.lerp(new THREE.Vector3(s3, s3, s3), 0.2);
+    }
+  });
+
+  return (
+    <Float speed={3} rotationIntensity={0.6} floatIntensity={0.9}>
+      <group
+        onClick={() => onInteract?.("[ACTION] Brand sentiment resonance array probed: crisis pulse monitored.")}
+        onPointerOver={() => { document.body.style.cursor = "pointer"; }}
+        onPointerOut={() => { document.body.style.cursor = "default"; }}
+      >
+        <mesh ref={innerRef}>
+          <sphereGeometry args={[1.2, 32, 32]} />
+          <meshPhysicalMaterial color="#ec4899" emissive="#be185d" roughness={0.2} metalness={0.9} clearcoat={1} />
+        </mesh>
+        <mesh ref={wave1Ref}>
+          <torusGeometry args={[1.8, 0.06, 16, 60]} />
+          <meshBasicMaterial color="#f472b6" transparent opacity={0.6} wireframe />
+        </mesh>
+        <mesh ref={wave2Ref} rotation={[Math.PI / 3, 0, 0]}>
+          <torusGeometry args={[2.3, 0.05, 16, 60]} />
+          <meshBasicMaterial color="#fbcfe8" transparent opacity={0.4} wireframe />
+        </mesh>
+      </group>
+    </Float>
+  );
+}
+
+export default function AvatarScene({
+  analyserNode,
+  domain = "engineering",
+  onInteract,
+  isSolved = false,
+}: {
+  analyserNode: AnalyserNode | null;
+  domain?: string;
+  onInteract?: (actionText: string) => void;
+  isSolved?: boolean;
+}) {
   
   const renderCore = () => {
     switch (domain) {
-      case "onboarding": return <OnboardingCore />;
+      case "onboarding": return <OnboardingCore onInteract={onInteract} />;
       case "sales": return <SalesCore analyserNode={analyserNode} onInteract={onInteract} />;
       case "product": return <ProductCore analyserNode={analyserNode} onInteract={onInteract} />;
       case "data": return <DataCore analyserNode={analyserNode} onInteract={onInteract} />;
+      case "sre": return <SreCore analyserNode={analyserNode} onInteract={onInteract} isSolved={isSolved} />;
+      case "support": return <SupportCore analyserNode={analyserNode} onInteract={onInteract} />;
+      case "brand": return <BrandCore analyserNode={analyserNode} onInteract={onInteract} />;
       case "engineering":
       default:
         return <EngineeringCore analyserNode={analyserNode} onInteract={onInteract} />;
@@ -310,6 +505,9 @@ export default function AvatarScene({ analyserNode, domain = "engineering", onIn
       case "sales": return "#f59e0b";
       case "product": return "#818cf8";
       case "data": return "#06b6d4";
+      case "sre": return isSolved ? "#22c55e" : "#ef4444";
+      case "support": return "#10b981";
+      case "brand": return "#ec4899";
       case "engineering":
       default: return "#00ff41";
     }

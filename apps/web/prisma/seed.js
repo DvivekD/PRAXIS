@@ -71,6 +71,39 @@ export class TokenBucketLimiter {
     },
   });
 
+  // Engineering Problem (Scope 1: Black Friday Checkout Concurrency & Infrastructure Degradation)
+  await prisma.problem.upsert({
+    where: { id: "prob-eng-checkout-concurrency" },
+    update: {},
+    create: {
+      id: "prob-eng-checkout-concurrency",
+      companyId: company1.id,
+      domain: "engineering",
+      title: "Checkout Concurrency & Infrastructure Degradation",
+      description: "Black Friday checkout requests are timing out (>30s) under peak traffic and double-charging shoppers during flash sales. Candidates must investigate remote Linux host aura-prod-app-04 via SSH, diagnose CoreDNS misrouting and connection pool exhaustion in the Network Lab, and fix the concurrency race condition in checkout.ts using the interactive debugger and Jest tests.",
+      setupCode: `// /var/www/aura-commerce/src/checkout.ts
+import { paymentGateway } from './services/gateway';
+import { orderStore } from './db/orders';
+
+export async function processPayment(orderId: string, amount: number): Promise<boolean> {
+  const order = await orderStore.find(orderId);
+  if (!order) throw new Error("Order not found");
+
+  // ✕ BUG: Payment gateway charged BEFORE idempotency flag is verified & committed!
+  const chargeSuccess = await paymentGateway.charge(order.customerId, amount);
+
+  if (order.status === "PAID") {
+    console.warn("[CHECKOUT] Duplicate execution detected after charge!");
+    return false;
+  }
+
+  await orderStore.update(orderId, { status: "PAID", chargedAt: Date.now() });
+  return chargeSuccess;
+}`,
+      agentPrompt: "You are Alex Chen, Lead SRE / Staff Engineer. Candidates must investigate the remote host, diagnose upstream CoreDNS and connection pool exhaustion in the network lab, and patch the idempotency race condition before the charge call in checkout.ts.",
+    },
+  });
+
   // Data Problem
   await prisma.problem.upsert({
     where: { id: "prob-data-etl" },

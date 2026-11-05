@@ -172,6 +172,39 @@ function getDomainWeights(domain: string): Record<string, number> {
         communication: 5,
         ambiguityHandling: 5,
       };
+    case "brand":
+      return {
+        approachQuality: 15,
+        efficiency: 10,
+        creativity: 15,
+        errorRecovery: 15,
+        beyondKnownAnswer: 10,
+        toolUtilization: 5,
+        communication: 20,
+        ambiguityHandling: 10,
+      };
+    case "support":
+      return {
+        approachQuality: 20,
+        efficiency: 20,
+        creativity: 10,
+        errorRecovery: 15,
+        beyondKnownAnswer: 5,
+        toolUtilization: 10,
+        communication: 20,
+        ambiguityHandling: 10,
+      };
+    case "sre":
+      return {
+        approachQuality: 20,
+        efficiency: 20,
+        creativity: 10,
+        errorRecovery: 25,
+        beyondKnownAnswer: 5,
+        toolUtilization: 10,
+        communication: 5,
+        ambiguityHandling: 5,
+      };
     default:
       return {
         approachQuality: 15, efficiency: 15, creativity: 10, errorRecovery: 15,

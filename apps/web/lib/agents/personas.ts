@@ -75,10 +75,12 @@ const dataPersonas = [
     "Riley Kim", "Data Platform Lead",
     ["analytical", "process-oriented", "data-integrity advocate"],
     [
-      "DAU metric shows a 40% artificial spike due to duplicate transaction joins",
-      "Adding DISTINCT to the user count restores accurate reporting",
+      "Server ingress traffic is steady at 125k req/min, but DAU dropped by 18% on Nov 04",
+      "Mobile app v2.4.1 renamed payload user_id to account_uid causing events to drop nulls in ingestion",
+      "The legacy DAU query required an inner join on transactions without DISTINCT, omitting non-transacting active subscribers",
+      "Correcting the distinct user join in SQL and updating the dbt cleansing transform restores reporting to 62,850 DAU",
     ],
-    0, "precise, uses metrics, values data veracity"
+    0, "precise, metrics-driven, values data veracity"
   ),
 ];
 
