@@ -7,13 +7,10 @@ import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { sendMessageAction } from "../../../actions/eval";
 import PraxisInbox from "../../../components/PraxisInbox";
-import Editor from "@monaco-editor/react";
+const Editor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
 
 const AvatarScene = dynamic(() => import("../../../components/Avatar/AvatarScene"), { ssr: false });
-const VoiceSession = dynamic(
-  () => import("../../../components/Avatar/VoiceSession").then((mod) => mod.VoiceSession),
-  { ssr: false }
-);
+import { VoiceSession } from "../../../components/Avatar/VoiceSession";
 
 // Domain-specific color schemes
 const DOMAIN_THEMES: Record<string, { accent: string; accentDim: string; label: string }> = {
@@ -27,9 +24,11 @@ function SimulationContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const sessionId = params.sessionId as string;
-  const skin = searchParams.get("skin") || "ide";
-  const domain = searchParams.get("domain") || "engineering";
+  const sessionId = (params?.sessionId as string) || "";
+  const skin = searchParams?.get("skin") || "ide";
+  const domain = searchParams?.get("domain") || "engineering";
+  const [scenarioDesc, setScenarioDesc] = useState("");
+  const [problemTitle, setProblemTitle] = useState("");
 
   const theme = DOMAIN_THEMES[domain] || DOMAIN_THEMES.engineering;
 
@@ -145,33 +144,49 @@ function SimulationContent() {
   useEffect(() => {
     // Prime the speech synthesis engine on mount to fix Chrome loading bugs
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.getVoices();
+      try {
+        window.speechSynthesis.getVoices();
+      } catch {}
     }
 
-    const stored = localStorage.getItem(`praxis_session_${sessionId}`);
-    if (stored) {
-      const state = JSON.parse(stored);
-      if (state.messages) setMessages(state.messages.map((m: any) => ({ ...m, persona: m.role === "assistant" ? state.activePersona?.name : undefined })));
-      if (state.setupCode) setCodeContent(state.setupCode);
-      if (state.activePersona) setActivePerson(state.activePersona);
-      if (state.skinType === "ide") {
-        setTerminalOutput([
-          `$ praxis --domain ${domain} --session ${sessionId.slice(0, 8)}`,
-          "",
-          `[PRAXIS] Simulation environment initialized`,
-          `[PRAXIS] Domain: ${domain.toUpperCase()}`,
-          `[PRAXIS] Skin: ${skin.toUpperCase()}`,
-          `[PRAXIS] Observer: ACTIVE — tracking 8 process dimensions`,
-          "",
-        ]);
-      }
+    if (!sessionId) {
       setSessionStarted(true);
-    } else {
-      setMessages([
-        { role: "assistant", content: `Welcome to your ${domain} simulation. I'll brief you on the situation shortly. What questions do you have?`, persona: "Agent" },
-      ]);
-      setSessionStarted(true);
+      return;
     }
+
+    try {
+      const stored = localStorage.getItem(`praxis_session_${sessionId}`);
+      if (stored) {
+        const state = JSON.parse(stored);
+        if (state && Array.isArray(state.messages)) {
+          setMessages(state.messages.map((m: any) => ({ ...m, persona: m.role === "assistant" ? state.activePersona?.name : undefined })));
+        }
+        if (state?.setupCode) setCodeContent(state.setupCode);
+        if (state?.activePersona) setActivePerson(state.activePersona);
+        if (state?.currentScenario) setScenarioDesc(state.currentScenario);
+        if (state?.problemTitle) setProblemTitle(state.problemTitle);
+        if (state?.skinType === "ide") {
+          setTerminalOutput([
+            `$ praxis --domain ${domain} --session ${(sessionId || "").slice(0, 8)}`,
+            "",
+            `[PRAXIS] Simulation environment initialized`,
+            `[PRAXIS] Domain: ${domain.toUpperCase()}`,
+            `[PRAXIS] Skin: ${skin.toUpperCase()}`,
+            `[PRAXIS] Observer: ACTIVE — tracking 8 process dimensions`,
+            "",
+          ]);
+        }
+        setSessionStarted(true);
+        return;
+      }
+    } catch (err) {
+      console.warn("[PRAXIS] Failed loading stored session state:", err);
+    }
+
+    setMessages([
+      { role: "assistant", content: `Welcome to your ${domain} simulation. I'll brief you on the situation shortly. What questions do you have?`, persona: "Agent" },
+    ]);
+    setSessionStarted(true);
   }, [sessionId, domain, skin]);
 
   // ─── Boot-up screen ───────────────────────────────────────
@@ -229,18 +244,24 @@ function SimulationContent() {
     lastActivityTimeRef.current = Date.now();
 
     try {
+      let cached: any = {};
+      try {
+        const item = typeof window !== "undefined" && sessionId ? localStorage.getItem(`praxis_session_${sessionId}`) : null;
+        if (item) cached = JSON.parse(item);
+      } catch {}
+
       const currentState = {
         messages,
         cognitiveLoadScore: cognitiveLoad,
         resolutionTurns: turns,
-        currentScenario: localStorage.getItem(`praxis_session_${sessionId}`) ? JSON.parse(localStorage.getItem(`praxis_session_${sessionId}`)!).currentScenario : "",
-        problemTitle: localStorage.getItem(`praxis_session_${sessionId}`) ? JSON.parse(localStorage.getItem(`praxis_session_${sessionId}`)!).problemTitle : "",
-        contextVariables: localStorage.getItem(`praxis_session_${sessionId}`) ? JSON.parse(localStorage.getItem(`praxis_session_${sessionId}`)!).contextVariables : {},
+        currentScenario: cached.currentScenario || scenarioDesc || "",
+        problemTitle: cached.problemTitle || problemTitle || "",
+        contextVariables: cached.contextVariables || {},
         setupCode: codeContent,
-        agentPrompt: localStorage.getItem(`praxis_session_${sessionId}`) ? JSON.parse(localStorage.getItem(`praxis_session_${sessionId}`)!).agentPrompt : "",
+        agentPrompt: cached.agentPrompt || "",
         skinType: skin,
         dimensionalScores: dimensions,
-        processSignals: localStorage.getItem(`praxis_session_${sessionId}`) ? JSON.parse(localStorage.getItem(`praxis_session_${sessionId}`)!).processSignals : {},
+        processSignals: cached.processSignals || {},
         activePersona: activePerson,
       };
 
@@ -632,7 +653,76 @@ function SimulationContent() {
 
         {/* 3D Avatar */}
         <div style={{ flex: 1, position: "relative", minHeight: 0 }}>
-          <AvatarScene analyserNode={null} domain={domain} onInteract={handleInteract} />
+          <AvatarScene analyserNode={analyserNode} domain={domain} onInteract={handleInteract} />
+          
+          {/* Voice Session Live Agent Controls */}
+          {voiceMode !== "off" && (
+            <div style={{ position: "absolute", top: 12, left: 12, right: 12, zIndex: 10 }}>
+              <VoiceSession
+                ref={voiceSessionRef}
+                mode={voiceMode}
+                domain={domain}
+                personaName={activePerson.name}
+                scenario={scenarioDesc}
+                problemTitle={problemTitle}
+                showAvatar={false}
+                compact={true}
+                autoConnect={true}
+                onAnalyserReady={(node) => setAnalyserNode(node)}
+                onUserTurn={(text) => handleVoiceUserTurn(text)}
+                onCoachEvent={(event, detail) => {
+                  setCoachLogs(prev => [...prev, { id: Math.random().toString(36).substring(2, 9), event, detail, timestamp: Date.now() }]);
+                }}
+              />
+            </div>
+          )}
+
+          {/* Coach Logs / Hints Drawer */}
+          {showCoachLogs && (
+            <div
+              style={{
+                position: "absolute",
+                top: voiceMode !== "off" ? 70 : 12,
+                left: 12,
+                right: 12,
+                maxHeight: 220,
+                overflowY: "auto",
+                background: "rgba(5, 5, 10, 0.95)",
+                border: "1px solid #38bdf8",
+                borderRadius: 8,
+                padding: 12,
+                zIndex: 15,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.8)",
+                fontSize: 11,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, borderBottom: "1px solid rgba(56,189,248,0.2)", paddingBottom: 4 }}>
+                <span style={{ color: "#38bdf8", fontWeight: 700 }}>◈ AI GUIDE // COACHING LOG</span>
+                <button
+                  onClick={() => setShowCoachLogs(false)}
+                  style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 13 }}
+                >
+                  ✕
+                </button>
+              </div>
+              {coachLogs.length === 0 ? (
+                <div style={{ color: "#666", fontStyle: "italic" }}>No coaching interventions logged yet. The Guide intervenes if you are stuck or need guidance.</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {coachLogs.map((log) => (
+                    <div key={log.id} style={{ padding: "6px 8px", background: "rgba(56,189,248,0.06)", borderLeft: "2px solid #38bdf8" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", color: "#38bdf8", fontWeight: 700, fontSize: 10, textTransform: "uppercase" }}>
+                        <span>{log.event}</span>
+                        <span style={{ color: "#666" }}>{new Date(log.timestamp).toLocaleTimeString()}</span>
+                      </div>
+                      <div style={{ color: "#e2e8f0", marginTop: 2, lineHeight: 1.4 }}>{log.detail}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Persona badge overlay */}
           <div style={{ position: "absolute", bottom: 12, left: 12, right: 12, padding: "8px 12px", background: "rgba(0,0,0,0.8)", border: `1px solid ${theme.accent}30` }}>
             <div style={{ fontSize: 10, color: theme.accent, fontWeight: 700, textTransform: "uppercase" }}>{activePerson.name}</div>

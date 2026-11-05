@@ -1,0 +1,10 @@
+node_modules
+.pnpm-store
+.next
+dist
+build
+.git
+.agents
+brain
+docs/presentations/*.pdf
+*.log

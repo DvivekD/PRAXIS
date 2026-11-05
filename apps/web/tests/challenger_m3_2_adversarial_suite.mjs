@@ -389,13 +389,13 @@ class ComponentHarness {
       useEffect: (effect, deps) => {
         const idx = self.hookCursor.eff++;
         if (idx >= self.effects.length) {
-          self.effects.push({ effect, deps, cleanup: null });
+          self.effects.push({ effect, deps, cleanup: null, hasRun: false });
         } else {
           const prev = self.effects[idx];
           const depsChanged = !prev.deps || !deps || deps.some((d, i) => d !== prev.deps[i]);
           if (depsChanged) {
             if (prev.cleanup) prev.cleanup();
-            self.effects[idx] = { effect, deps, cleanup: null };
+            self.effects[idx] = { effect, deps, cleanup: null, hasRun: false };
           }
         }
       },
@@ -417,7 +417,8 @@ class ComponentHarness {
 
     // Run pending effects
     for (const effObj of this.effects) {
-      if (effObj.cleanup === null && effObj.effect) {
+      if (!effObj.hasRun && effObj.effect) {
+        effObj.hasRun = true;
         const res = effObj.effect();
         if (typeof res === "function") {
           effObj.cleanup = res;
@@ -502,15 +503,23 @@ runTest("Suite 1", "1.1 Standalone mounting with 0 props (test-avatar compatibil
   harness.unmount();
 });
 
-runTest("Suite 1", "1.2 Custom props binding (domain, compact, custom class)", () => {
+runTest("Suite 1", "1.2 Custom props binding (domain, custom class)", () => {
   const harness = new ComponentHarness(VoiceSession.render || VoiceSession, {
     domain: "sales",
-    compact: true,
     className: "custom-dock-class",
   });
   const html = renderToStaticMarkup(harness.currentOutput);
   assert(html.includes("custom-dock-class"), "Custom className must be applied");
   assert(html.includes('data-domain="sales"'), "AvatarScene must receive domain prop");
+  harness.unmount();
+});
+
+runTest("Suite 1", "1.3 Compact mode suppresses AvatarScene and applies compact padding", () => {
+  const harness = new ComponentHarness(VoiceSession.render || VoiceSession, {
+    compact: true,
+  });
+  const html = renderToStaticMarkup(harness.currentOutput);
+  assert(!html.includes('data-testid="avatar-scene"'), "AvatarScene must be suppressed in compact mode");
   // In compact mode, compact padding '6px 14px' is applied
   assert(html.includes("padding:6px 14px"), "Compact padding must be applied");
   harness.unmount();

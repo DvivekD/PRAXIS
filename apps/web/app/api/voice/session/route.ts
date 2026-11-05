@@ -5,7 +5,7 @@ import { DOMAIN_PERSONAS, Persona } from "../../../../lib/agents/personas";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const GEMINI_LIVE_MODEL = "gemini-2.0-flash-exp";
+const GEMINI_LIVE_MODEL = "gemini-2.5-flash-native-audio-latest";
 
 export interface SessionRequestBody {
   mode?: "persona" | "guide";

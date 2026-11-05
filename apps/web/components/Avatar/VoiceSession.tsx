@@ -101,12 +101,160 @@ export function decodeBase64PcmToAudioBuffer(
   }
 }
 
+/**
+ * Sample-accurate sequential Web Audio playback queue for 24kHz Base64 PCM chunks.
+ * Encapsulates timeline offsets, jitter lead buffering, active source tracking, onended nulling, and instantaneous barge-in cancellation.
+ */
+export class AudioPlaybackQueue {
+  private audioCtx: AudioContext;
+  private gainNode: GainNode;
+  private nextStartTime: number = 0;
+  private activeSources: Set<AudioBufferSourceNode> = new Set();
+  private onSpeakingChange?: (isSpeaking: boolean) => void;
+
+  constructor(
+    audioCtx: AudioContext,
+    gainNode: GainNode,
+    onSpeakingChange?: (isSpeaking: boolean) => void
+  ) {
+    this.audioCtx = audioCtx;
+    this.gainNode = gainNode;
+    this.onSpeakingChange = onSpeakingChange;
+    this.nextStartTime = audioCtx ? audioCtx.currentTime : 0;
+  }
+
+  public scheduleChunk(
+    base64Pcm: string,
+    sampleRate: number = OUTPUT_SAMPLE_RATE
+  ): { source: AudioBufferSourceNode; startTime: number; endTime: number; duration: number } | null {
+    if (!this.audioCtx || this.audioCtx.state === "closed") {
+      return null;
+    }
+
+    const audioBuffer = decodeBase64PcmToAudioBuffer(this.audioCtx, base64Pcm, sampleRate);
+    if (!audioBuffer) {
+      return null;
+    }
+
+    const now = this.audioCtx.currentTime;
+    const startTime = Math.max(now + 0.02, this.nextStartTime);
+
+    const source = this.audioCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(this.gainNode);
+
+    this.activeSources.add(source);
+    this.onSpeakingChange?.(true);
+
+    source.onended = () => {
+      source.onended = null;
+      this.activeSources.delete(source);
+      try {
+        source.disconnect();
+      } catch {}
+      if (this.activeSources.size === 0) {
+        this.onSpeakingChange?.(false);
+      }
+    };
+
+    source.start(startTime);
+    this.nextStartTime = startTime + audioBuffer.duration;
+
+    return {
+      source,
+      startTime,
+      endTime: this.nextStartTime,
+      duration: audioBuffer.duration,
+    };
+  }
+
+  public stopAll(): void {
+    for (const source of this.activeSources) {
+      try {
+        source.onended = null;
+        source.stop();
+        source.disconnect();
+      } catch {}
+    }
+    this.activeSources.clear();
+    this.onSpeakingChange?.(false);
+
+    if (this.audioCtx && this.audioCtx.state !== "closed") {
+      this.nextStartTime = this.audioCtx.currentTime;
+    } else {
+      this.nextStartTime = 0;
+    }
+  }
+
+  public getNextStartTime(): number {
+    return this.nextStartTime;
+  }
+
+  public getActiveSourceCount(): number {
+    return this.activeSources.size;
+  }
+
+  public resetTimeline(): void {
+    this.nextStartTime =
+      this.audioCtx && this.audioCtx.state !== "closed" ? this.audioCtx.currentTime : 0;
+  }
+}
+
+/**
+ * Accumulates streaming candidate speech transcript chunks and flushes full spoken turns
+ * to the parent evaluation pipeline.
+ */
+export class SpokenTurnBuffer {
+  private buffer: string = "";
+  private onTurnComplete?: (text: string) => void;
+
+  constructor(onTurnComplete?: (text: string) => void) {
+    this.onTurnComplete = onTurnComplete;
+  }
+
+  public append(chunk: string): void {
+    const trimmed = chunk.trim();
+    if (!trimmed) return;
+    this.buffer += (this.buffer ? " " : "") + trimmed;
+  }
+
+  public flush(): string {
+    const text = this.buffer.trim();
+    if (text) {
+      this.buffer = "";
+      this.onTurnComplete?.(text);
+      return text;
+    }
+    return "";
+  }
+
+  public getBuffer(): string {
+    return this.buffer;
+  }
+
+  public clear(): void {
+    this.buffer = "";
+  }
+}
+
 export interface VoiceSessionHandle {
+  /** Pushes contextual telemetry/text to the active Gemini Live session (prefixed with [CONTEXT]) */
   pushContext: (text: string) => void;
+  /** Initiates connection to Gemini Live session */
   connect: () => Promise<void>;
+  /** Alias for connect() matching simulation page naming */
+  connectVoice: () => Promise<void>;
+  /** Disconnects active Gemini Live session and tears down Web Audio resources */
   disconnect: () => Promise<void>;
+  /** Alias for disconnect() matching simulation page naming */
+  disconnectVoice: () => Promise<void>;
+  /** Toggles microphone mute state */
   toggleMute: () => Promise<void>;
+  /** Returns true if the microphone is currently muted */
+  isMuted: () => boolean;
+  /** Returns current session status */
   getStatus: () => VoiceSessionStatus;
+  /** Returns the active AnalyserNode used for audio visualization/lip-sync */
   getAnalyserNode: () => AnalyserNode | null;
 }
 
@@ -141,19 +289,23 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
 
   const agentRef = useRef<VoiceAgent | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const isInternalAudioContextRef = useRef<boolean>(true);
   const gainNodeRef = useRef<GainNode | null>(null);
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
+  const isInternalAnalyserRef = useRef<boolean>(true);
 
-  // Web Audio playback scheduling queue
-  const nextStartTimeRef = useRef<number>(0);
-  const activeSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
-
-  // Accumulation buffer for candidate speech turn
-  const userTranscriptBufferRef = useRef<string>("");
+  // Audio playback queue & spoken turn buffer instances
+  const queueRef = useRef<AudioPlaybackQueue | null>(null);
+  const turnBufferRef = useRef<SpokenTurnBuffer>(new SpokenTurnBuffer(onUserTurn));
   const isConnectingRef = useRef<boolean>(false);
 
+  // Keep turn callback updated
+  useEffect(() => {
+    turnBufferRef.current = new SpokenTurnBuffer(onUserTurn);
+  }, [onUserTurn]);
+
   // Active AnalyserNode resolution: external override takes precedence, fallback to internally created
-  const activeAnalyser = externalAnalyser !== undefined ? externalAnalyser : internalAnalyser;
+  const activeAnalyser = externalAnalyser || internalAnalyser;
 
   /**
    * Initializes the Web Audio playback graph:
@@ -170,8 +322,19 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
       externalAnalyser.context instanceof AudioContext &&
       externalAnalyser.context.state !== "closed"
     ) {
+      if (
+        isInternalAudioContextRef.current &&
+        audioCtx &&
+        audioCtx !== externalAnalyser.context &&
+        audioCtx.state !== "closed"
+      ) {
+        try {
+          void audioCtx.close();
+        } catch {}
+      }
       audioCtx = externalAnalyser.context;
       audioContextRef.current = audioCtx;
+      isInternalAudioContextRef.current = false;
     } else if (!audioCtx || audioCtx.state === "closed") {
       const AudioCtxClass =
         window.AudioContext ||
@@ -181,6 +344,7 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
       }
       audioCtx = new AudioCtxClass();
       audioContextRef.current = audioCtx;
+      isInternalAudioContextRef.current = true;
     }
 
     let gainNode = gainNodeRef.current;
@@ -191,11 +355,14 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
     }
 
     let analyser = externalAnalyser || analyserNodeRef.current;
-    if (!analyser || analyser.context !== audioCtx) {
+    if (externalAnalyser) {
+      isInternalAnalyserRef.current = false;
+    } else if (!analyser || analyser.context !== audioCtx) {
       analyser = audioCtx.createAnalyser();
       analyser.fftSize = 2048;
       analyser.smoothingTimeConstant = 0.8;
       analyserNodeRef.current = analyser;
+      isInternalAnalyserRef.current = true;
       setInternalAnalyser(analyser);
       onAnalyserReady?.(analyser);
       onAnalyserNodeCreated?.(analyser);
@@ -204,12 +371,18 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
     try {
       gainNode.disconnect();
     } catch {}
-    try {
-      analyser.disconnect();
-    } catch {}
+    if (isInternalAnalyserRef.current && analyser) {
+      try {
+        analyser.disconnect();
+      } catch {}
+    }
 
     gainNode.connect(analyser);
     analyser.connect(audioCtx.destination);
+
+    queueRef.current = new AudioPlaybackQueue(audioCtx, gainNode, (speaking) => {
+      setIsSpeaking(speaking);
+    });
 
     return { audioCtx, gainNode, analyserNode: analyser };
   }, [externalAnalyser, onAnalyserReady, onAnalyserNodeCreated]);
@@ -218,33 +391,16 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
    * Stops all active and queued AudioBufferSourceNodes, disconnecting them cleanly.
    */
   const stopAllPlayback = useCallback(() => {
-    for (const source of activeSourcesRef.current) {
-      try {
-        source.onended = null;
-        source.stop();
-        source.disconnect();
-      } catch {}
-    }
-    activeSourcesRef.current.clear();
+    queueRef.current?.stopAll();
     setIsSpeaking(false);
-
-    if (audioContextRef.current && audioContextRef.current.state !== "closed") {
-      nextStartTimeRef.current = audioContextRef.current.currentTime;
-    } else {
-      nextStartTimeRef.current = 0;
-    }
   }, []);
 
   /**
    * Flushes accumulated candidate speech turn to parent evaluation pipeline.
    */
   const flushUserTurn = useCallback(() => {
-    const text = userTranscriptBufferRef.current.trim();
-    if (text) {
-      onUserTurn?.(text);
-      userTranscriptBufferRef.current = "";
-    }
-  }, [onUserTurn]);
+    turnBufferRef.current.flush();
+  }, []);
 
   /**
    * Schedules a decoded Base64 PCM audio chunk onto the Web Audio timeline.
@@ -254,41 +410,16 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
       // First model speech chunk confirms that the user turn completed
       flushUserTurn();
 
-      const audioCtx = audioContextRef.current;
-      const gainNode = gainNodeRef.current;
-      if (!audioCtx || !gainNode || audioCtx.state === "closed") {
-        return;
+      if (!queueRef.current) {
+        const { audioCtx, gainNode } = initAudioGraph();
+        queueRef.current = new AudioPlaybackQueue(audioCtx, gainNode, (speaking) => {
+          setIsSpeaking(speaking);
+        });
       }
 
-      const audioBuffer = decodeBase64PcmToAudioBuffer(audioCtx, base64Pcm);
-      if (!audioBuffer) {
-        return;
-      }
-
-      const now = audioCtx.currentTime;
-      const startTime = Math.max(now + 0.02, nextStartTimeRef.current);
-
-      const source = audioCtx.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(gainNode);
-
-      activeSourcesRef.current.add(source);
-      setIsSpeaking(true);
-
-      source.onended = () => {
-        activeSourcesRef.current.delete(source);
-        try {
-          source.disconnect();
-        } catch {}
-        if (activeSourcesRef.current.size === 0) {
-          setIsSpeaking(false);
-        }
-      };
-
-      source.start(startTime);
-      nextStartTimeRef.current = startTime + audioBuffer.duration;
+      queueRef.current?.scheduleChunk(base64Pcm);
     },
-    [flushUserTurn]
+    [flushUserTurn, initAudioGraph]
   );
 
   /**
@@ -326,7 +457,7 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
    */
   const disconnectVoice = useCallback(async () => {
     stopAllPlayback();
-    userTranscriptBufferRef.current = "";
+    turnBufferRef.current.clear();
 
     if (agentRef.current) {
       const agent = agentRef.current;
@@ -338,15 +469,30 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
       }
     }
 
-    if (audioContextRef.current && audioContextRef.current.state !== "closed") {
+    if (
+      isInternalAudioContextRef.current &&
+      audioContextRef.current &&
+      audioContextRef.current.state !== "closed"
+    ) {
       try {
         await audioContextRef.current.close();
       } catch {}
-      audioContextRef.current = null;
+    }
+    audioContextRef.current = null;
+    isInternalAudioContextRef.current = false;
+
+    try {
+      gainNodeRef.current?.disconnect();
+    } catch {}
+    if (isInternalAnalyserRef.current) {
+      try {
+        analyserNodeRef.current?.disconnect();
+      } catch {}
     }
 
     gainNodeRef.current = null;
     analyserNodeRef.current = null;
+    queueRef.current = null;
     setInternalAnalyser(null);
     setIsMuted(false);
     setIsSpeaking(false);
@@ -372,7 +518,7 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
       if (audioCtx.state === "suspended") {
         await audioCtx.resume();
       }
-      nextStartTimeRef.current = audioCtx.currentTime;
+      queueRef.current?.resetTimeline();
 
       // 2. Instantiate VoiceAgent
       const agent = new VoiceAgent({
@@ -393,8 +539,7 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
         },
         onTranscript: (role, text) => {
           if (role === "user") {
-            userTranscriptBufferRef.current +=
-              (userTranscriptBufferRef.current ? " " : "") + text.trim();
+            turnBufferRef.current.append(text);
           } else {
             // Model started transcript -> flush user turn
             flushUserTurn();
@@ -438,10 +583,10 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[VoiceSession] Connection failure:", msg);
+      await disconnectVoice();
       setStatus("error");
       setErrorMessage(msg);
       onStatusChange?.("error", msg);
-      await disconnectVoice();
     } finally {
       isConnectingRef.current = false;
     }
@@ -493,11 +638,14 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
       agentRef.current?.pushContext(text);
     },
     connect: connectVoice,
+    connectVoice,
     disconnect: disconnectVoice,
+    disconnectVoice,
     toggleMute,
+    isMuted: () => isMuted,
     getStatus: () => status,
     getAnalyserNode: () => activeAnalyser,
-  }), [connectVoice, disconnectVoice, toggleMute, status, activeAnalyser]);
+  }), [connectVoice, disconnectVoice, toggleMute, isMuted, status, activeAnalyser]);
 
   // Handle autoConnect
   useEffect(() => {
@@ -515,12 +663,28 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
         agentRef.current = null;
         void agent.disconnect();
       }
-      if (audioContextRef.current && audioContextRef.current.state !== "closed") {
+      if (
+        isInternalAudioContextRef.current &&
+        audioContextRef.current &&
+        audioContextRef.current.state !== "closed"
+      ) {
         void audioContextRef.current.close();
-        audioContextRef.current = null;
       }
+      audioContextRef.current = null;
+      isInternalAudioContextRef.current = false;
+
+      try {
+        gainNodeRef.current?.disconnect();
+      } catch {}
+      if (isInternalAnalyserRef.current) {
+        try {
+          analyserNodeRef.current?.disconnect();
+        } catch {}
+      }
+
       gainNodeRef.current = null;
       analyserNodeRef.current = null;
+      queueRef.current = null;
     };
   }, [stopAllPlayback]);
 
@@ -578,7 +742,7 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
       `}</style>
 
       {/* 3D Scene Viewport */}
-      {showAvatar && (
+      {showAvatar && !compact && (
         <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
           <AvatarScene analyserNode={activeAnalyser} domain={domain} />
         </div>

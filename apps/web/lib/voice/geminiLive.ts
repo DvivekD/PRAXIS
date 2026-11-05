@@ -227,7 +227,7 @@ export class VoiceAgent {
         (this.options.mode === "guide" ? "Puck" : "Aoede");
       const systemInstruction =
         config.systemInstruction || this.options.systemInstruction;
-      const model = config.model || "gemini-2.0-flash-exp";
+      const model = config.model || "gemini-2.5-flash-native-audio-latest";
 
       // 4. Open bidirectional WebSocket Live session
       const session = await ai.live.connect({
