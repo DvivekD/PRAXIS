@@ -128,6 +128,13 @@ export class InBrowserProctorTracker {
     if (!faceDetected) {
       if (!this.absenceStartTime) this.absenceStartTime = now;
       const absenceDwell = (now - this.absenceStartTime) / 1000;
+      let isAnomaly = false;
+      let anomalyType: ProctoringFrameMetrics["anomalyType"] = undefined;
+      if (absenceDwell >= 8.0 && now - this.lastAnomalyReportedTime > 18000) {
+        isAnomaly = true;
+        anomalyType = "CANDIDATE_ABSENT";
+        this.lastAnomalyReportedTime = now;
+      }
       return {
         faceDetected: false,
         faceCount: 0,
@@ -138,8 +145,8 @@ export class InBrowserProctorTracker {
         irisCentroidX: 0.5,
         irisCentroidY: 0.5,
         dwellTimeSeconds: absenceDwell,
-        isAnomaly: absenceDwell >= 3.5,
-        anomalyType: absenceDwell >= 3.5 ? "CANDIDATE_ABSENT" : undefined,
+        isAnomaly,
+        anomalyType,
         confidence: 0.9,
       };
     }
@@ -178,24 +185,24 @@ export class InBrowserProctorTracker {
 
     const dwellTimeSeconds = (now - this.directionStartTime) / 1000;
 
-    // 5. Anomaly Qualification
+    // 5. Anomaly Qualification with 18-second minimum cooldown to prevent event flooding
     let isAnomaly = false;
     let anomalyType: ProctoringFrameMetrics["anomalyType"] = undefined;
 
-    if (multipleFaces) {
-      isAnomaly = true;
-      anomalyType = "MULTIPLE_FACES_DETECTED";
-    } else if (direction === "lap_down" && dwellTimeSeconds >= 2.5) {
-      isAnomaly = true;
-      anomalyType = "GAZE_DIVERSION_LAP";
-    } else if ((direction === "offscreen_left" || direction === "offscreen_right") && dwellTimeSeconds >= 3.0) {
-      isAnomaly = true;
-      anomalyType = "GAZE_DIVERSION_OFFSCREEN";
-    }
-
-    // Cooldown check for anomaly reporting
-    if (isAnomaly && now - this.lastAnomalyReportedTime > 6000) {
-      this.lastAnomalyReportedTime = now;
+    if (now - this.lastAnomalyReportedTime > 18000) {
+      if (multipleFaces) {
+        isAnomaly = true;
+        anomalyType = "MULTIPLE_FACES_DETECTED";
+        this.lastAnomalyReportedTime = now;
+      } else if (direction === "lap_down" && dwellTimeSeconds >= 3.5) {
+        isAnomaly = true;
+        anomalyType = "GAZE_DIVERSION_LAP";
+        this.lastAnomalyReportedTime = now;
+      } else if ((direction === "offscreen_left" || direction === "offscreen_right") && dwellTimeSeconds >= 4.0) {
+        isAnomaly = true;
+        anomalyType = "GAZE_DIVERSION_OFFSCREEN";
+        this.lastAnomalyReportedTime = now;
+      }
     }
 
     return {

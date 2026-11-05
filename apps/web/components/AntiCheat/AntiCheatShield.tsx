@@ -38,17 +38,19 @@ export default function AntiCheatShield({
   const [activeModalViolation, setActiveModalViolation] = useState<IntegrityViolation | null>(null);
   const [blurStartTime, setBlurStartTime] = useState<number | null>(null);
   const [isDemoBypassed, setIsDemoBypassed] = useState<boolean>(false);
+  const isDemoBypassedRef = useRef(isDemoBypassed);
+  isDemoBypassedRef.current = isDemoBypassed;
   const strikesRef = useRef(strikes);
   strikesRef.current = strikes;
 
-  // 1. Reset / Bypass Handler (for Demo purposes)
+  // 1. Reset / Bypass Handler (for Demo purposes - persists until manually re-armed)
   const handleResetOrBypass = useCallback(() => {
     setStrikes(0);
     setIntegrityScore(100);
     setActiveModalViolation(null);
     setBlurStartTime(null);
     setIsDemoBypassed(true);
-    setTimeout(() => setIsDemoBypassed(false), 3000);
+    isDemoBypassedRef.current = true;
   }, []);
 
   // 2. Global Keyboard Shortcut for Demo Bypass: Ctrl + Shift + X or Alt + X
@@ -66,9 +68,15 @@ export default function AntiCheatShield({
   // 3. Register Violation
   const registerViolation = useCallback(
     (type: IntegrityViolation["type"], description: string, durationSeconds?: number) => {
-      if (!active) return;
+      if (!active || (isDemoBypassedRef.current && !description.startsWith("DEMO SIMULATION"))) return;
 
-      const newStrikes = Math.min(3, strikesRef.current + 1);
+      // Camera gaze and subtle drift never open the screen-blocking takeover modal!
+      const isBlockingModal =
+        type === "TAB_SWITCH" ||
+        type === "DEVTOOLS_OPEN" ||
+        (description.startsWith("DEMO SIMULATION") && !isDemoBypassedRef.current);
+
+      const newStrikes = isBlockingModal ? Math.min(3, strikesRef.current + 1) : strikesRef.current;
       const violation: IntegrityViolation = {
         id: `v-${Date.now()}`,
         type,
@@ -77,9 +85,11 @@ export default function AntiCheatShield({
         durationSeconds,
       };
 
-      setStrikes(newStrikes);
+      if (isBlockingModal) {
+        setStrikes(newStrikes);
+        setActiveModalViolation(violation);
+      }
       setViolations((prev) => [violation, ...prev]);
-      setActiveModalViolation(violation);
 
       if (onViolation) {
         onViolation(violation, newStrikes);
@@ -449,15 +459,73 @@ export default function AntiCheatShield({
         )}
       </AnimatePresence>
 
+      {/* Demo Bypass Floating Status Badge */}
+      {isDemoBypassed && (
+        <div
+          style={{
+            position: "fixed",
+            top: 14,
+            right: 14,
+            zIndex: 99998,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "6px 12px",
+            background: "rgba(16, 185, 129, 0.15)",
+            border: "1px solid rgba(16, 185, 129, 0.4)",
+            borderRadius: 6,
+            backdropFilter: "blur(8px)",
+            fontFamily: "var(--font-mono, monospace)",
+            fontSize: 11,
+            fontWeight: 700,
+            color: "#10b981",
+            boxShadow: "0 0 20px rgba(16, 185, 129, 0.2)",
+          }}
+        >
+          <span
+            style={{
+              display: "inline-block",
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: "#10b981",
+              boxShadow: "0 0 8px #10b981",
+            }}
+          />
+          <span>⚡ DEMO BYPASS: ACTIVE (SILENCED)</span>
+          <button
+            onClick={() => {
+              setIsDemoBypassed(false);
+              isDemoBypassedRef.current = false;
+            }}
+            style={{
+              marginLeft: 6,
+              background: "rgba(255, 255, 255, 0.1)",
+              border: "1px solid rgba(255, 255, 255, 0.2)",
+              color: "#e2e8f0",
+              borderRadius: 4,
+              padding: "2px 6px",
+              fontSize: 10,
+              cursor: "pointer",
+            }}
+            title="Click to re-enable strict anticheat modals"
+          >
+            RE-ARM
+          </button>
+        </div>
+      )}
+
       {/* 360° Dual-Camera Omnipresent Proctoring HUD */}
       {active && (
         <ProctoringHUD
           sessionId={sessionId}
           integrityScore={integrityScore}
+          isDemoBypassed={isDemoBypassed}
           onAnomalyDetected={(anomalyType, desc) => {
+            if (isDemoBypassedRef.current && !desc.startsWith("DEMO SIMULATION")) return;
             registerViolation(anomalyType as any, desc);
             setIntegrityScore((prev) =>
-              Math.max(25, prev - (anomalyType.includes("MULTIPLE") ? 20 : 6))
+              Math.max(45, prev - (anomalyType.includes("MULTIPLE") ? 15 : 5))
             );
           }}
           onBypassDemo={handleResetOrBypass}

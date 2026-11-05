@@ -7,6 +7,7 @@ import { InBrowserProctorTracker, type ProctoringFrameMetrics } from "../../lib/
 interface ProctoringHUDProps {
   sessionId?: string;
   integrityScore: number;
+  isDemoBypassed?: boolean;
   onAnomalyDetected?: (anomalyType: string, description: string) => void;
   onBypassDemo?: () => void;
 }
@@ -14,6 +15,7 @@ interface ProctoringHUDProps {
 export default function ProctoringHUD({
   sessionId = "demo-session",
   integrityScore,
+  isDemoBypassed = false,
   onAnomalyDetected,
   onBypassDemo,
 }: ProctoringHUDProps) {
@@ -24,6 +26,9 @@ export default function ProctoringHUD({
   const [phonePreviewUrl, setPhonePreviewUrl] = useState<string | null>(null);
   const [lastHeartbeatTime, setLastHeartbeatTime] = useState<number>(Date.now());
   const [simulatedAnomalyActive, setSimulatedAnomalyActive] = useState<boolean>(false);
+  const lastAnomalyReportTimeRef = useRef<number>(0);
+  const isDemoBypassedRef = useRef(isDemoBypassed);
+  isDemoBypassedRef.current = isDemoBypassed;
 
   // Gaze Metrics
   const [metrics, setMetrics] = useState<ProctoringFrameMetrics>({
@@ -63,17 +68,21 @@ export default function ProctoringHUD({
 
           tracker.start(frontVideoRef.current, (newMetrics) => {
             setMetrics(newMetrics);
-            if (newMetrics.isAnomaly && newMetrics.anomalyType) {
-              const desc =
-                newMetrics.anomalyType === "GAZE_DIVERSION_LAP"
-                  ? "Sustained downward gaze detected (>2.5s) — potential smartphone or notes in lap."
-                  : newMetrics.anomalyType === "GAZE_DIVERSION_OFFSCREEN"
-                  ? "Sustained off-screen gaze detected (>3.0s) — potential secondary monitor."
-                  : newMetrics.anomalyType === "MULTIPLE_FACES_DETECTED"
-                  ? "Multiple faces detected in camera frame — unauthorized person present."
-                  : "Candidate absent from desk.";
+            if (!isDemoBypassedRef.current && newMetrics.isAnomaly && newMetrics.anomalyType) {
+              const now = Date.now();
+              if (now - lastAnomalyReportTimeRef.current >= 18000) {
+                lastAnomalyReportTimeRef.current = now;
+                const desc =
+                  newMetrics.anomalyType === "GAZE_DIVERSION_LAP"
+                    ? "Sustained downward gaze detected (>3.5s) — potential smartphone or notes in lap."
+                    : newMetrics.anomalyType === "GAZE_DIVERSION_OFFSCREEN"
+                    ? "Sustained off-screen gaze detected (>4.0s) — potential secondary monitor."
+                    : newMetrics.anomalyType === "MULTIPLE_FACES_DETECTED"
+                    ? "Multiple faces detected in camera frame — unauthorized person present."
+                    : "Candidate absent from desk.";
 
-              onAnomalyDetected?.(newMetrics.anomalyType, desc);
+                onAnomalyDetected?.(newMetrics.anomalyType, desc);
+              }
             }
           });
         }
