@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kali Linux — root@kali: ~ (zsh)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --kali-blue: #267bf0;
+            --kali-cyan: #00d7ff;
+            --kali-red: #f14c4c;
+            --kali-green: #23d18b;
+            --kali-bg: #0c1017;
+            --term-bg: rgba(13, 17, 24, 0.94);
+        }
+
+        * {
+            box-sizing: border-box;
+            scrollbar-width: thin;
+            scrollbar-color: #267bf0 #0d1118;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0d1118;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1f293d;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #267bf0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #070b12;
+            background-image: 
+                radial-gradient(circle at 18% 22%, rgba(38, 123, 240, 0.16) 0%, transparent 45%),
+                radial-gradient(circle at 82% 78%, rgba(0, 215, 255, 0.11) 0%, transparent 50%),
+                linear-gradient(135deg, #06090f 0%, #0d1524 50%, #080c14 100%);
+            color: #e5e9f0;
+            overflow: hidden;
+            user-select: text;
+        }
+
+        .font-mono-kali {
+            font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-variant-ligatures: none;
+        }
+
+        .cyber-grid {
+            background-size: 36px 36px;
+            background-image: 
+                linear-gradient(to right, rgba(38, 123, 240, 0.04) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(38, 123, 240, 0.04) 1px, transparent 1px);
+        }
+
+        .terminal-shadow {
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(56, 139, 253, 0.22);
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .animate-pulse-fast {
+            animation: pulseGlow 1.1s infinite;
+        }
+
+        .ascii-art {
+            line-height: 1.15;
+            letter-spacing: 0px;
+            white-space: pre;
+        }
+
+        ::selection {
+            background: rgba(38, 123, 240, 0.4);
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between cyber-grid select-none">
+
+    <!-- KALI XFCE TOP PANEL BAR -->
+    <header class="h-9 bg-[#0b0e14]/95 border-b border-slate-800/80 px-3 flex items-center justify-between text-xs z-30 shrink-0">
+        <!-- Left: Kali Applications Menu & Workspaces -->
+        <div class="flex items-center space-x-3">
+            <button id="btn-apps-menu" class="flex items-center space-x-2 px-2 py-1 rounded hover:bg-slate-800/80 text-sky-400 font-semibold transition">
+                <svg class="w-4 h-4 fill-current text-sky-400" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.6 6.4c.8.5 1.4 1.4 1.4 2.6 0 1.8-1.5 3.1-3.2 3.4l1.9 3.6h-2.1l-1.8-3.5H10v3.5H8V8h4.5c1.2 0 2.3.1 3.1.4zM10 9.8v2.9h2.4c1.1 0 1.8-.6 1.8-1.5 0-.9-.7-1.4-1.8-1.4H10z"/>
+                </svg>
+                <span class="tracking-wide text-slate-200">Applications</span>
+            </button>
+
+            <div class="h-4 w-[1px] bg-slate-800 hidden sm:block"></div>
+
+            <!-- Workspace Switcher -->
+            <div class="hidden sm:flex items-center space-x-1 bg-slate-900/90 p-0.5 rounded border border-slate-800/90">
+                <span class="px-2 py-0.5 rounded bg-sky-600/30 text-sky-300 border border-sky-500/40 font-mono-kali text-[11px]">1:term</span>
+                <button onclick="runQuickCommand('msfconsole')" class="px-2 py-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 font-mono-kali text-[11px] transition">2:msf</button>
+                <button onclick="runQuickCommand('htop')" class="px-2 py-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 font-mono-kali text-[11px] transition">3:sys</button>
+            </div>
+
+            <!-- Target Box Indicator -->
+            <div class="hidden md:flex items-center space-x-2 bg-slate-900/80 border border-slate-800 px-2.5 py-0.5 rounded text-[11px] font-mono-kali">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span class="text-slate-400">tun0:</span>
+                <span class="text-emerald-400">10.10.14.23</span>
+                <span class="text-slate-600">|</span>
+                <span class="text-slate-400">Target:</span>
+                <span class="text-rose-400 font-medium cursor-pointer hover:underline" onclick="insertCommand('nmap -sV 10.10.11.45')" title="Click to scan target">10.10.11.45</span>
+            </div>
+        </div>
+
+        <!-- Center: Active Window Title -->
+        <div class="hidden lg:flex items-center space-x-2 text-slate-400 font-mono-kali text-xs">
+            <span id="top-panel-title">kali@kali: ~/Desktop</span>
+        </div>
+
+        <!-- Right: CTF Lab Progress, Audio, CPU/RAM & Clock -->
+        <div class="flex items-center space-x-2 sm:space-x-3">
+            <button id="btn-mission-drawer" class="flex items-center space-x-1.5 px-2.5 py-1 rounded bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-sky-300 transition text-xs font-medium">
+                <svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+                <span>CTF Lab</span>
+                <span id="mission-badge" class="px-1.5 py-0.2 bg-sky-500/30 rounded text-[10px] font-mono-kali text-sky-200">0/4</span>
+            </button>
+
+            <button id="btn-sound-toggle" class="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition" title="Toggle Keystroke Synth Sound">
+                <svg id="icon-sound-off" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+                </svg>
+                <svg id="icon-sound-on" class="w-4 h-4 hidden text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                </svg>
+            </button>
+
+            <div class="hidden sm:flex items-center space-x-2 text-[11px] font-mono-kali text-slate-400">
+                <span>CPU <strong id="cpu-stat" class="text-sky-400">4%</strong></span>
+                <span>RAM <strong class="text-emerald-400">1.4G</strong></span>
+            </div>
+
+            <div id="top-clock" class="font-mono-kali text-slate-300 text-xs font-medium">12:00:00</div>
+        </div>
+    </header>
+
+    <!-- DROPDOWN KALI APPLICATIONS MENU -->
+    <div id="apps-dropdown" class="hidden fixed top-10 left-3 w-72 bg-[#111621]/95 backdrop-blur-md border border-slate-700/80 rounded-lg shadow-2xl z-50 overflow-hidden text-xs">
+        <div class="px-3 py-2 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
+            <span class="font-semibold text-sky-400 tracking-wider uppercase text-[10px]">Kali Linux Arsenal</span>
+            <span class="text-[10px] font-mono-kali text-slate-500">2026.3-rolling</span>
+        </div>
+        <div class="p-1.5 space-y-0.5 max-h-[75vh] overflow-y-auto">
+            <div class="px-2 py-1 text-[10px] font-semibold text-slate-500 uppercase">01 - Information Gathering</div>
+            <button onclick="runMenuTool('nmap -sC -sV 10.10.11.45')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-sky-600/20 hover:text-sky-300 flex items-center justify-between group transition">
+                <span>🔍 Nmap Network Scanner</span>
+                <code class="text-[10px] text-slate-500 group-hover:text-sky-400">nmap</code>
+            </button>
+            <button onclick="runMenuTool('whois target.htb')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-sky-600/20 hover:text-sky-300 flex items-center justify-between group transition">
+                <span>🌐 Whois Domain Lookup</span>
+                <code class="text-[10px] text-slate-500 group-hover:text-sky-400">whois</code>
+            </button>
+
+            <div class="px-2 py-1 pt-2 text-[10px] font-semibold text-slate-500 uppercase">02 - Vulnerability & Web Analysis</div>
+            <button onclick="runMenuTool('gobuster dir -u http://10.10.11.45 -w /usr/share/wordlists/dirb/common.txt')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-sky-600/20 hover:text-sky-300 flex items-center justify-between group transition">
+                <span>📂 Gobuster Directory Brute</span>
+                <code class="text-[10px] text-slate-500 group-hover:text-sky-400">gobuster</code>
+            </button>
+            <button onclick="runMenuTool('nikto -h http://10.10.11.45')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-sky-600/20 hover:text-sky-300 flex items-center justify-between group transition">
+                <span>🕷️ Nikto Web Scanner</span>
+                <code class="text-[10px] text-slate-500 group-hover:text-sky-400">nikto</code>
+            </button>
+            <button onclick="runMenuTool('sqlmap -u \"http://10.10.11.45/login.php?id=1\" --dbs')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-sky-600/20 hover:text-sky-300 flex items-center justify-between group transition">
+                <span>💉 SQLmap Injection Tool</span>
+                <code class="text-[10px] text-slate-500 group-hover:text-sky-400">sqlmap</code>
+            </button>
+
+            <div class="px-2 py-1 pt-2 text-[10px] font-semibold text-slate-500 uppercase">03 - Password Attacks</div>
+            <button onclick="runMenuTool('john ~/Desktop/hash.txt --wordlist=/usr/share/wordlists/rockyou.txt')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-sky-600/20 hover:text-sky-300 flex items-center justify-between group transition">
+                <span>🔓 John the Ripper</span>
+                <code class="text-[10px] text-slate-500 group-hover:text-sky-400">john</code>
+            </button>
+            <button onclick="runMenuTool('hydra -l admin -P /usr/share/wordlists/rockyou.txt ssh://10.10.11.45')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-sky-600/20 hover:text-sky-300 flex items-center justify-between group transition">
+                <span>🐉 THC-Hydra Brute Forcer</span>
+                <code class="text-[10px] text-slate-500 group-hover:text-sky-400">hydra</code>
+            </button>
+
+            <div class="px-2 py-1 pt-2 text-[10px] font-semibold text-slate-500 uppercase">04 - Exploitation & Wireless</div>
+            <button onclick="runMenuTool('msfconsole')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-sky-600/20 hover:text-sky-300 flex items-center justify-between group transition">
+                <span>⚔️ Metasploit Framework</span>
+                <code class="text-[10px] text-slate-500 group-hover:text-sky-400">msfconsole</code>
+            </button>
+            <button onclick="runMenuTool('wifite')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-sky-600/20 hover:text-sky-300 flex items-center justify-between group transition">
+                <span>📡 Wifite Wireless Auditor</span>
+                <code class="text-[10px] text-slate-500 group-hover:text-sky-400">wifite</code>
+            </button>
+
+            <div class="px-2 py-1 pt-2 text-[10px] font-semibold text-slate-500 uppercase">05 - System & Utilities</div>
+            <button onclick="runMenuTool('neofetch')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-sky-600/20 hover:text-sky-300 flex items-center justify-between group transition">
+                <span>🐉 Neofetch System Info</span>
+                <code class="text-[10px] text-slate-500 group-hover:text-sky-400">neofetch</code>
+            </button>
+            <button onclick="runMenuTool('cmatrix')" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-sky-600/20 hover:text-sky-300 flex items-center justify-between group transition">
+                <span>🟩 CMatrix Digital Rain</span>
+                <code class="text-[10px] text-slate-500 group-hover:text-sky-400">cmatrix</code>
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN WORKSPACE AREA -->
+    <main class="flex-1 flex overflow-hidden p-1.5 sm:p-3 gap-3 relative">
+        
+        <!-- TERMINAL WINDOW CONTAINER -->
+        <section id="terminal-window" class="flex-1 flex flex-col bg-[#0d1118]/95 backdrop-blur-md rounded-xl border border-slate-800/90 terminal-shadow overflow-hidden relative transition-all duration-200">
+            
+            <!-- Window Titlebar & Tabs -->
+            <div class="h-10 bg-[#121722] border-b border-slate-800/90 px-3 flex items-center justify-between shrink-0 select-none">
+                <!-- Left: Tabs -->
+                <div class="flex items-center space-x-1 overflow-x-auto no-scrollbar">
+                    <div id="tab-list" class="flex items-center space-x-1">
+                        <!-- Rendered dynamically -->
+                    </div>
+                    <button id="btn-new-tab" class="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-sky-400 transition" title="New Terminal Tab">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Right: Quick Actions & Window Controls -->
+                <div class="flex items-center space-x-2">
+                    <button onclick="runQuickCommand('clear')" class="hidden sm:inline-flex items-center px-2 py-0.5 text-[11px] font-mono-kali text-slate-400 hover:text-slate-200 bg-slate-800/60 hover:bg-slate-800 rounded border border-slate-700/50 transition" title="Clear Terminal (Ctrl+L)">
+                        clear
+                    </button>
+                    <button onclick="triggerCtrlC()" class="inline-flex items-center px-2 py-0.5 text-[11px] font-mono-kali text-rose-400 hover:text-rose-200 bg-rose-950/40 hover:bg-rose-900/50 rounded border border-rose-800/50 transition" title="Send Interrupt Signal (Ctrl+C)">
+                        Ctrl+C
+                    </button>
+                    <div class="flex items-center space-x-1.5 pl-2">
+                        <span class="w-3 h-3 rounded-full bg-amber-500/80 hover:bg-amber-400 cursor-pointer" onclick="runQuickCommand('clear')" title="Clear Window"></span>
+                        <span class="w-3 h-3 rounded-full bg-emerald-500/80 hover:bg-emerald-400 cursor-pointer" onclick="toggleFullscreen()" title="Toggle Fullscreen"></span>
+                        <span class="w-3 h-3 rounded-full bg-rose-500/80 hover:bg-rose-400 cursor-pointer" onclick="resetTerminalSession()" title="Reset Session"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Terminal Scrollable Output & Active Prompt -->
+            <div id="terminal-body" class="flex-1 overflow-y-auto p-3 sm:p-4 font-mono-kali text-[13px] sm:text-sm leading-relaxed select-text cursor-text" onclick="focusCommandInput(event)">
+                
+                <!-- Output History Container -->
+                <div id="terminal-output" class="space-y-1 break-words"></div>
+
+                <!-- Active ZSH Prompt Block -->
+                <div id="active-prompt-container" class="mt-1">
+                    <!-- Line 1 of Kali ZSH Prompt -->
+                    <div id="prompt-line-1" class="flex items-center flex-wrap leading-none select-none">
+                        <!-- Populated dynamically based on user/root & cwd or msf6 mode -->
+                    </div>
+                    <!-- Line 2 of Kali ZSH Prompt with Live Input -->
+                    <div class="flex items-center mt-0.5">
+                        <span id="prompt-line-2" class="mr-2 select-none shrink-0"></span>
+                        <div class="relative flex-1 flex items-center">
+                            <input
+                                id="cmd-input"
+                                type="text"
+                                spellcheck="false"
+                                autocapitalize="off"
+                                autocomplete="off"
+                                autocorrect="off"
+                                class="w-full bg-transparent text-slate-100 focus:outline-none font-mono-kali caret-sky-400"
+                                autofocus
+                            />
+                            <span id="autocomplete-ghost" class="pointer-events-none absolute left-0 text-slate-600 font-mono-kali whitespace-pre"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MATRIX RAIN CANVAS OVERLAY (For `cmatrix` command) -->
+            <div id="matrix-overlay" class="hidden absolute inset-0 top-10 bg-black/95 z-40 flex flex-col">
+                <canvas id="matrix-canvas" class="flex-1 w-full h-full"></canvas>
+                <div class="bg-slate-900/90 border-t border-emerald-500/30 px-4 py-1.5 flex items-center justify-between text-xs font-mono-kali text-emerald-400">
+                    <span>cmatrix — running digital rain simulation</span>
+                    <button onclick="stopMatrix()" class="px-2 py-0.5 bg-emerald-500/20 hover:bg-emerald-500/40 rounded border border-emerald-500/40 text-emerald-200">Press Q or Ctrl+C to exit</button>
+                </div>
+            </div>
+
+            <!-- NANO TEXT EDITOR OVERLAY (For `nano <file>` command) -->
+            <div id="nano-overlay" class="hidden absolute inset-0 top-10 bg-[#0d1118] z-40 flex flex-col font-mono-kali text-sm">
+                <div class="bg-slate-200 text-slate-900 px-3 py-1 flex items-center justify-between font-semibold text-xs">
+                    <span>GNU nano 7.2</span>
+                    <span id="nano-filename">File: notes.txt</span>
+                    <span id="nano-status">Modified</span>
+                </div>
+                <textarea id="nano-textarea" spellcheck="false" class="flex-1 w-full bg-[#0d1118] text-slate-100 p-3 focus:outline-none resize-none font-mono-kali text-sm leading-relaxed"></textarea>
+                <div class="bg-[#121722] border-t border-slate-800 p-2 text-xs grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button onclick="saveNanoFile()" class="flex items-center space-x-1.5 hover:bg-slate-800 p-1 rounded text-left">
+                        <span class="bg-slate-200 text-slate-900 px-1 font-bold">^O</span>
+                        <span class="text-slate-300">Write Out (Save)</span>
+                    </button>
+                    <button onclick="closeNanoEditor()" class="flex items-center space-x-1.5 hover:bg-slate-800 p-1 rounded text-left">
+                        <span class="bg-slate-200 text-slate-900 px-1 font-bold">^X</span>
+                        <span class="text-slate-300">Exit Nano</span>
+                    </button>
+                    <div class="hidden sm:flex items-center space-x-1.5 p-1 text-slate-500">
+                        <span class="bg-slate-700 text-slate-200 px-1">^W</span>
+                        <span>Where Is</span>
+                    </div>
+                    <div class="hidden sm:flex items-center space-x-1.5 p-1 text-slate-500">
+                        <span class="bg-slate-700 text-slate-200 px-1">^K</span>
+                        <span>Cut Text</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HTOP INTERACTIVE MONITOR OVERLAY -->
+            <div id="htop-overlay" class="hidden absolute inset-0 top-10 bg-[#0b0e14] z-40 flex flex-col font-mono-kali text-xs p-3 select-none">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3 pb-2 border-b border-slate-800">
+                    <div class="space-y-1">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sky-400 w-10">CPU[1]</span>
+                            <div class="flex-1 bg-slate-800 h-3 rounded overflow-hidden flex">
+                                <div class="bg-emerald-500 h-full w-[18%]"></div>
+                                <div class="bg-sky-500 h-full w-[8%]"></div>
+                            </div>
+                            <span class="text-slate-300 w-12 text-right">26.0%</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sky-400 w-10">CPU[2]</span>
+                            <div class="flex-1 bg-slate-800 h-3 rounded overflow-hidden flex">
+                                <div class="bg-emerald-500 h-full w-[12%]"></div>
+                                <div class="bg-amber-500 h-full w-[5%]"></div>
+                            </div>
+                            <span class="text-slate-300 w-12 text-right">17.0%</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-amber-400 w-10">Mem</span>
+                            <div class="flex-1 bg-slate-800 h-3 rounded overflow-hidden flex">
+                                <div class="bg-emerald-500 h-full w-[22%]"></div>
+                                <div class="bg-sky-500 h-full w-[14%]"></div>
+                            </div>
+                            <span class="text-slate-300 w-16 text-right">1.42G/8G</span>
+                        </div>
+                    </div>
+                    <div class="text-slate-400 flex flex-col justify-center space-y-0.5 sm:pl-4">
+                        <div>Tasks: <strong class="text-slate-200">94</strong>, 182 thr; <strong class="text-emerald-400">2 running</strong></div>
+                        <div>Load average: <strong class="text-slate-200">0.34 0.28 0.21</strong></div>
+                        <div>Uptime: <strong class="text-sky-400">04:19:52</strong></div>
+                    </div>
+                </div>
+                <div class="bg-emerald-500 text-slate-950 font-bold px-2 py-0.5 grid grid-cols-12">
+                    <span class="col-span-1">PID</span>
+                    <span class="col-span-2">USER</span>
+                    <span class="col-span-1">CPU%</span>
+                    <span class="col-span-1">MEM%</span>
+                    <span class="col-span-2">TIME+</span>
+                    <span class="col-span-5">Command</span>
+                </div>
+                <div class="flex-1 overflow-y-auto divide-y divide-slate-900 text-slate-300">
+                    <div class="px-2 py-1 grid grid-cols-12 hover:bg-slate-800/60"><span class="col-span-1 text-emerald-400">1337</span><span class="col-span-2">root</span><span class="col-span-1">8.4</span><span class="col-span-1">4.2</span><span class="col-span-2">0:14.22</span><span class="col-span-5 text-sky-300">/usr/bin/ruby /usr/bin/msfconsole</span></div>
+                    <div class="px-2 py-1 grid grid-cols-12 hover:bg-slate-800/60"><span class="col-span-1 text-emerald-400">982</span><span class="col-span-2">kali</span><span class="col-span-1">4.1</span><span class="col-span-1">1.9</span><span class="col-span-2">0:03.19</span><span class="col-span-5">/usr/bin/zsh</span></div>
+                    <div class="px-2 py-1 grid grid-cols-12 hover:bg-slate-800/60"><span class="col-span-1 text-emerald-400">412</span><span class="col-span-2">root</span><span class="col-span-1">2.0</span><span class="col-span-1">0.8</span><span class="col-span-2">0:09.04</span><span class="col-span-5">openvpn --config htb-lab.ovpn</span></div>
+                    <div class="px-2 py-1 grid grid-cols-12 hover:bg-slate-800/60"><span class="col-span-1 text-emerald-400">740</span><span class="col-span-2">postgres</span><span class="col-span-1">1.2</span><span class="col-span-1">2.5</span><span class="col-span-2">0:01.88</span><span class="col-span-5">/usr/lib/postgresql/16/bin/postgres</span></div>
+                    <div class="px-2 py-1 grid grid-cols-12 hover:bg-slate-800/60"><span class="col-span-1 text-emerald-400">2105</span><span class="col-span-2">kali</span><span class="col-span-1">0.7</span><span class="col-span-1">0.4</span><span class="col-span-2">0:00.41</span><span class="col-span-5">htop</span></div>
+                </div>
+                <div class="mt-2 pt-2 border-t border-slate-800 flex items-center justify-between">
+                    <span class="text-slate-400">Press <strong class="text-white">Q</strong> or <strong class="text-white">Ctrl+C</strong> to quit htop</span>
+                    <button onclick="closeHtop()" class="px-3 py-1 bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 rounded border border-rose-500/40">F10 Quit</button>
+                </div>
+            </div>
+
+            <!-- Bottom Quick-Command Bar for Mobile & Fast Pentest Execution -->
+            <div class="bg-[#101520] border-t border-slate-800/80 px-2.5 py-1.5 flex items-center space-x-1.5 overflow-x-auto shrink-0">
+                <span class="text-[10px] font-mono-kali uppercase tracking-wider text-slate-500 pr-1 shrink-0">Quick Run:</span>
+                <button onclick="runQuickCommand('help')" class="px-2 py-0.5 rounded bg-slate-800/90 hover:bg-sky-600/30 text-slate-300 hover:text-sky-300 border border-slate-700/70 font-mono-kali text-xs shrink-0 transition">help</button>
+                <button onclick="runQuickCommand('neofetch')" class="px-2 py-0.5 rounded bg-slate-800/90 hover:bg-sky-600/30 text-slate-300 hover:text-sky-300 border border-slate-700/70 font-mono-kali text-xs shrink-0 transition">neofetch</button>
+                <button onclick="runQuickCommand('ls -la')" class="px-2 py-0.5 rounded bg-slate-800/90 hover:bg-sky-600/30 text-slate-300 hover:text-sky-300 border border-slate-700/70 font-mono-kali text-xs shrink-0 transition">ls -la</button>
+                <button onclick="runQuickCommand('nmap -sV 10.10.11.45')" class="px-2 py-0.5 rounded bg-slate-800/90 hover:bg-sky-600/30 text-sky-300 hover:text-sky-200 border border-sky-700/40 font-mono-kali text-xs shrink-0 transition">nmap 10.10.11.45</button>
+                <button onclick="runQuickCommand('gobuster dir -u http://10.10.11.45')" class="px-2 py-0.5 rounded bg-slate-800/90 hover:bg-sky-600/30 text-slate-300 hover:text-sky-300 border border-slate-700/70 font-mono-kali text-xs shrink-0 transition">gobuster</button>
+                <button onclick="runQuickCommand('john ~/Desktop/hash.txt')" class="px-2 py-0.5 rounded bg-slate-800/90 hover:bg-sky-600/30 text-slate-300 hover:text-sky-300 border border-slate-700/70 font-mono-kali text-xs shrink-0 transition">john</button>
+                <button onclick="runQuickCommand('msfconsole')" class="px-2 py-0.5 rounded bg-slate-800/90 hover:bg-rose-600/30 text-rose-300 hover:text-rose-200 border border-rose-700/40 font-mono-kali text-xs shrink-0 transition">msfconsole</button>
+                <button onclick="runQuickCommand('sudo su')" class="px-2 py-0.5 rounded bg-slate-800/90 hover:bg-amber-600/30 text-amber-300 hover:text-amber-200 border border-amber-700/40 font-mono-kali text-xs shrink-0 transition">sudo su</button>
+                <button onclick="runQuickCommand('cmatrix')" class="px-2 py-0.5 rounded bg-slate-800/90 hover:bg-emerald-600/30 text-emerald-300 hover:text-emerald-200 border border-emerald-700/40 font-mono-kali text-xs shrink-0 transition">cmatrix</button>
+            </div>
+        </section>
+
+        <!-- CTF LAB & CHEATSHEET SIDEBAR DRAWER -->
+        <aside id="mission-drawer" class="hidden lg:flex w-80 xl:w-96 flex-col bg-[#0d1118]/95 backdrop-blur-md rounded-xl border border-slate-800/90 terminal-shadow overflow-hidden shrink-0">
+            <div class="h-10 bg-[#121722] border-b border-slate-800 px-3.5 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+                    <h2 class="font-semibold text-xs tracking-wider uppercase text-slate-200">Kali CTF Lab: Target 10.10.11.45</h2>
+                </div>
+                <button onclick="toggleMissionDrawer()" class="text-slate-400 hover:text-white lg:hidden">✕</button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-3.5 space-y-4 text-xs">
+                <!-- Mission Briefing -->
+                <div class="p-3 rounded-lg bg-slate-900/90 border border-slate-800 space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sky-400 font-semibold">Operation: BlackBox HTB</span>
+                        <span class="px-1.5 py-0.5 bg-emerald-500/15 text-emerald-300 rounded font-mono-kali text-[10px]">VPN Connected</span>
+                    </div>
+                    <p class="text-slate-400 leading-relaxed">
+                        Complete the 4-stage penetration test against <code class="text-rose-400 font-mono-kali">10.10.11.45</code> or freely explore Linux & Kali security tools. Click any command below to paste or run it!
+                    </p>
+                </div>
+
+                <!-- 4 CTF Objectives -->
+                <div class="space-y-2.5" id="objectives-list">
+                    <!-- Objective 1 -->
+                    <div id="obj-card-1" class="p-3 rounded-lg bg-slate-900/60 border border-slate-800/90 transition">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-semibold text-slate-200 flex items-center gap-1.5">
+                                <span id="obj-icon-1" class="w-4 h-4 rounded-full bg-slate-800 border border-slate-600 inline-flex items-center justify-center text-[10px]">1</span>
+                                1. Network Reconnaissance
+                            </span>
+                            <span id="obj-status-1" class="text-[10px] font-mono-kali text-slate-500">PENDING</span>
+                        </div>
+                        <p class="text-slate-400 text-[11px] mb-2">Scan <code class="text-sky-300">10.10.11.45</code> with Nmap to identify open ports and services.</p>
+                        <button onclick="runQuickCommand('nmap -sC -sV 10.10.11.45')" class="w-full text-left px-2.5 py-1.5 rounded bg-slate-950 hover:bg-sky-950/50 border border-slate-800 hover:border-sky-500/40 font-mono-kali text-[11px] text-sky-400 flex items-center justify-between group transition">
+                            <span>$ nmap -sC -sV 10.10.11.45</span>
+                            <span class="text-[10px] text-slate-500 group-hover:text-sky-300">Run ▶</span>
+                        </button>
+                    </div>
+
+                    <!-- Objective 2 -->
+                    <div id="obj-card-2" class="p-3 rounded-lg bg-slate-900/60 border border-slate-800/90 transition">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-semibold text-slate-200 flex items-center gap-1.5">
+                                <span id="obj-icon-2" class="w-4 h-4 rounded-full bg-slate-800 border border-slate-600 inline-flex items-center justify-center text-[10px]">2</span>
+                                2. Web Directory Enumeration
+                            </span>
+                            <span id="obj-status-2" class="text-[10px] font-mono-kali text-slate-500">PENDING</span>
+                        </div>
+                        <p class="text-slate-400 text-[11px] mb-2">Use Gobuster to discover hidden directories on port 80 HTTP.</p>
+                        <button onclick="runQuickCommand('gobuster dir -u http://10.10.11.45 -w /usr/share/wordlists/dirb/common.txt')" class="w-full text-left px-2.5 py-1.5 rounded bg-slate-950 hover:bg-sky-950/50 border border-slate-800 hover:border-sky-500/40 font-mono-kali text-[11px] text-sky-400 flex items-center justify-between group transition">
+                            <span class="truncate">$ gobuster dir -u http://10.10.11.45</span>
+                            <span class="text-[10px] text-slate-500 group-hover:text-sky-300 shrink-0 ml-1">Run ▶</span>
+                        </button>
+                    </div>
+
+                    <!-- Objective 3 -->
+                    <div id="obj-card-3" class="p-3 rounded-lg bg-slate-900/60 border border-slate-800/90 transition">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-semibold text-slate-200 flex items-center gap-1.5">
+                                <span id="obj-icon-3" class="w-4 h-4 rounded-full bg-slate-800 border border-slate-600 inline-flex items-center justify-center text-[10px]">3</span>
+                                3. Crack Credentials Hash
+                            </span>
+                            <span id="obj-status-3" class="text-[10px] font-mono-kali text-slate-500">PENDING</span>
+                        </div>
+                        <p class="text-slate-400 text-[11px] mb-2">Crack the administrator hash saved in <code class="text-sky-300">~/Desktop/hash.txt</code> using John the Ripper.</p>
+                        <button onclick="runQuickCommand('john ~/Desktop/hash.txt --wordlist=/usr/share/wordlists/rockyou.txt')" class="w-full text-left px-2.5 py-1.5 rounded bg-slate-950 hover:bg-sky-950/50 border border-slate-800 hover:border-sky-500/40 font-mono-kali text-[11px] text-sky-400 flex items-center justify-between group transition">
+                            <span class="truncate">$ john ~/Desktop/hash.txt --wordlist=...</span>
+                            <span class="text-[10px] text-slate-500 group-hover:text-sky-300 shrink-0 ml-1">Run ▶</span>
+                        </button>
+                    </div>
+
+                    <!-- Objective 4 -->
+                    <div id="obj-card-4" class="p-3 rounded-lg bg-slate-900/60 border border-slate-800/90 transition">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-semibold text-slate-200 flex items-center gap-1.5">
+                                <span id="obj-icon-4" class="w-4 h-4 rounded-full bg-slate-800 border border-slate-600 inline-flex items-center justify-center text-[10px]">4</span>
+                                4. Exploit & Capture Root Flag
+                            </span>
+                            <span id="obj-status-4" class="text-[10px] font-mono-kali text-slate-500">PENDING</span>
+                        </div>
+                        <p class="text-slate-400 text-[11px] mb-2">Launch <code class="text-rose-400">msfconsole</code> and run <code class="text-emerald-400">exploit</code>, or run our automated exploit script to capture <code class="text-amber-300">root.txt</code>.</p>
+                        <div class="space-y-1.5">
+                            <button onclick="runQuickCommand('python3 ~/Desktop/exploit.py 10.10.11.45')" class="w-full text-left px-2.5 py-1.5 rounded bg-slate-950 hover:bg-emerald-950/50 border border-slate-800 hover:border-emerald-500/40 font-mono-kali text-[11px] text-emerald-400 flex items-center justify-between group transition">
+                                <span class="truncate">$ python3 ~/Desktop/exploit.py 10.10.11.45</span>
+                                <span class="text-[10px] text-slate-500 group-hover:text-emerald-300 shrink-0 ml-1">Run ▶</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Keyboard Shortcuts Reference -->
+                <div class="p-3 rounded-lg bg-slate-900/50 border border-slate-800/80 space-y-1.5">
+                    <div class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Terminal Shortcuts</div>
+                    <div class="grid grid-cols-2 gap-1.5 text-[11px] font-mono-kali">
+                        <div class="text-slate-400"><kbd class="px-1.5 py-0.5 bg-slate-800 rounded text-slate-200">Tab</kbd> Autocomplete</div>
+                        <div class="text-slate-400"><kbd class="px-1.5 py-0.5 bg-slate-800 rounded text-slate-200">↑/↓</kbd> History</div>
+                        <div class="text-slate-400"><kbd class="px-1.5 py-0.5 bg-slate-800 rounded text-slate-200">Ctrl+L</kbd> Clear</div>
+                        <div class="text-slate-400"><kbd class="px-1.5 py-0.5 bg-slate-800 rounded text-slate-200">Ctrl+C</kbd> Abort</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <script>
+        /***********************************************************************
+         * KALI LINUX ZSH TERMINAL & PENTEST LAB SIMULATOR
+         ***********************************************************************/
+
+        // --- 1. VIRTUAL FILE SYSTEM (VFS) ---
+        const initialFileSystem = {
+            "/": {
+                type: "dir",
+                children: ["home", "root", "etc", "usr", "var", "opt", "tmp"]
+            },
+            "/home": { type: "dir", children: ["kali"] },
+            "/home/kali": {
+                type: "dir",
+                children: ["Desktop", "Documents", "Downloads", ".zshrc", ".bash_history"]
+            },
+            "/home/kali/.zshrc": {
+                type: "file",
+                permissions: "-rw-r--r--",
+                size: 412,
+                content: `# ~/.zshrc file for Kali Linux ZSH
+export PATH=$HOME/bin:/usr/local/bin:$PATH
+PROMPT=$'%F{%(#.blue.green)}┌──(%B%F{%(#.red.blue)}%n㉿%m%b%F{%(#.blue.green)})-[%B%F{reset}%(6~.%-1~/…/%4~.%5~)%b%F{%(#.blue.green)}]\\n└─%B%(#.%F{red}#.%F{blue}$)%b%F{reset} '
+alias ll='ls -la'
+alias la='ls -A'
+alias cls='clear'`
+            },
+            "/home/kali/.bash_history": {
+                type: "file",
+                permissions: "-rw-------",
+                size: 198,
+                content: `whoami\nip a\nnmap -sC -sV 10.10.11.45\ncat ~/Desktop/notes.txt\npython3 ~/Desktop/exploit.py 10.10.11.45`
+            },
+            "/home/kali/Desktop": {
+                type: "dir",
+                children: ["README.txt", "hash.txt", "exploit.py", "targets.txt", "notes.txt"]
+            },
+            "/home/kali/Desktop/README.txt": {
+                type: "file",
+                permissions: "-rw-r--r--",
+                size: 540,
+                content: `=========================================================
+   KALI LINUX OFFENSIVE SECURITY LAB ENVIRONMENT (2026.3)
+=========================================================
+Target Machine : 10.10.11.45 (blackbox.htb)
+Your Tun0 IP   : 10.10.14.23
+
+Recommended Workflow:
+  1. Scan ports:     nmap -sC -sV 10.10.11.45
+  2. Enum web dirs:  gobuster dir -u http://10.10.11.45
+  3. Crack hash:     john ~/Desktop/hash.txt --wordlist=/usr/share/wordlists/rockyou.txt
+  4. Exploit target: python3 ~/Desktop/exploit.py 10.10.11.45
+                     (or launch 'msfconsole' and run 'exploit')`
+            },
+            "/home/kali/Desktop/hash.txt": {
+                type: "file",
+                permissions: "-rw-r--r--",
+                size: 96,
+                content: `admin:$6$rounds=656000$kaliSalt2026$e8f92c17b90a4d89b3c142f7e819a21f4d9981c5`
+            },
+            "/home/kali/Desktop/targets.txt": {
+                type: "file",
+                permissions: "-rw-r--r--",
+                size: 64,
+                content: `10.10.11.45   blackbox.htb\n10.10.11.48   vault.htb\n192.168.1.1   gateway.local`
+            },
+            "/home/kali/Desktop/notes.txt": {
+                type: "file",
+                permissions: "-rw-r--r--",
+                size: 210,
+                content: `[Pentest Notes]
+- Target 10.10.11.45 is running vsftpd 3.0.3 and Apache/2.4.41.
+- Found login portal at http://10.10.11.45/admin_login.php
+- Default credentials didn't work. Need SQL injection or password cracking.`
+            },
+            "/home/kali/Desktop/exploit.py": {
+                type: "file",
+                permissions: "-rwxr-xr-x",
+                size: 450,
+                content: `#!/usr/bin/env python3
+import sys, socket, time
+
+if len(sys.argv) < 2:
+    print("Usage: python3 exploit.py <target_ip>")
+    sys.exit(1)
+
+target = sys.argv[1]
+print(f"[*] Sending payload to {target} on port 80...")
+time.sleep(1.0)
+print("[+] Buffer overflow successful! Spawned root shell.")
+print("ROOT FLAG: HTB{k4l1_l1nux_3xpl01t_m4st3r_2026}")`
+            },
+            "/home/kali/Documents": { type: "dir", children: ["reports"] },
+            "/home/kali/Documents/reports": { type: "dir", children: ["audit_summary.pdf"] },
+            "/home/kali/Documents/reports/audit_summary.pdf": { type: "file", permissions: "-rw-r--r--", size: 2400, content: "[Binary PDF Report - Confidential Pentest Audit 2026]" },
+            "/home/kali/Downloads": { type: "dir", children: ["linpeas.sh"] },
+            "/home/kali/Downloads/linpeas.sh": { type: "file", permissions: "-rwxr-xr-x", size: 8420, content: "# LinPEAS - Linux Privilege Escalation Awesome Script\necho '[*] Scanning system for escalation vectors...'" },
+            "/root": { type: "dir", children: ["root.txt", ".ssh"] },
+            "/root/root.txt": { type: "file", permissions: "-r--------", size: 42, content: "HTB{r00t_fl4g_b14ckb0x_59a81b7e2c}" },
+            "/root/.ssh": { type: "dir", children: ["id_rsa"] },
+            "/root/.ssh/id_rsa": { type: "file", permissions: "-rw-------", size: 1760, content: "-----BEGIN OPENSSH PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC3...\n-----END OPENSSH PRIVATE KEY-----" },
+            "/etc": { type: "dir", children: ["passwd", "shadow", "resolv.conf", "hosts"] },
+            "/etc/passwd": { type: "file", permissions: "-rw-r--r--", size: 1240, content: "root:x:0:0:root:/root:/bin/zsh\ndaemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin\nkali:x:1000:1000:kali,,,:/home/kali:/bin/zsh\npostgres:x:114:120::/var/lib/postgresql:/bin/false" },
+            "/etc/shadow": { type: "file", permissions: "-r--------", size: 520, content: "root:$6$salt$encryptedrootpwd:19500:0:99999:7:::\nkali:$6$salt$encryptedkalipwd:19500:0:99999:7:::" },
+            "/etc/resolv.conf": { type: "file", permissions: "-rw-r--r--", size: 48, content: "nameserver 1.1.1.1\nnameserver 8.8.8.8" },
+            "/etc/hosts": { type: "file", permissions: "-rw-r--r--", size: 92, content: "127.0.0.1 localhost\n127.0.1.1 kali\n10.10.11.45 blackbox.htb" },
+            "/usr": { type: "dir", children: ["bin", "share"] },
+            "/usr/bin": { type: "dir", children: ["nmap", "gobuster", "john", "msfconsole", "sqlmap", "nikto", "hydra", "python3", "cat", "ls", "pwd", "cd", "whoami", "grep", "curl"] },
+            "/usr/share": { type: "dir", children: ["wordlists"] },
+            "/usr/share/wordlists": { type: "dir", children: ["rockyou.txt"] },
+            "/usr/share/wordlists/rockyou.txt": { type: "file", permissions: "-rw-r--r--", size: 139000, content: "123456\npassword\n12345678\nsunflower\nbaseball\nmonkey\nadmin123\nfootball\nsecret\nhacker\nkali2026" },
+            "/var": { type: "dir", children: ["log"] },
+            "/var/log": { type: "dir", children: ["auth.log", "syslog"] },
+            "/var/log/auth.log": { type: "file", permissions: "-rw-r-----", size: 840, content: "Feb 5 08:12:04 kali sshd[912]: Accepted publickey for kali from 10.10.14.23 port 49212 ssh2" },
+            "/var/log/syslog": { type: "file", permissions: "-rw-r-----", size: 1420, content: "Feb 5 08:00:01 kali systemd[1]: Started Session 1 of user kali." },
+            "/opt": { type: "dir", children: ["netcat", "bloodhound"] },
+            "/tmp": { type: "dir", children: [] }
+        };
+
+        // Load VFS from localStorage or default
+        let fileSystem = JSON.parse(localStorage.getItem("kali_vfs")) || initialFileSystem;
+        function saveVFS() {
+            localStorage.setItem("kali_vfs", JSON.stringify(fileSystem));
+        }
+
+        // --- 2. TERMINAL STATE ---
+        let currentDir = "/home/kali";
+        let currentUser = "kali";
+        let commandHistory = [];
+        let historyIndex = -1;
+        let ctfProgress = { obj1: false, obj2: false, obj3: false, obj4: false };
+        let activeTabs = [
+            { id: 1, title: "zsh — kali@kali", active: true, dir: "/home/kali" }
+        ];
+        let soundEnabled = false;
+        let audioCtx = null;
+        let isMsfMode = false;
+        let activeNanoPath = null;
+
+        // Command Autocomplete suggestions
+        const kaliCommands = [
+            "help", "clear", "ls", "cd", "pwd", "cat", "whoami", "id", "uname", "ifconfig", "ip",
+            "nmap", "gobuster", "john", "msfconsole", "sqlmap", "nikto", "hydra", "python3", "nano",
+            "neofetch", "cmatrix", "htop", "sudo su", "su", "ping", "history", "date", "ps", "rm", "mkdir", "touch", "echo"
+        ];
+
+        // --- 3. AUDIO SYNTHESIZER (Web Audio API) ---
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playKeyBeep() {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440 + Math.random() * 200, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.015, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.04);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.04);
+            } catch(e) {}
+        }
+
+        // --- 4. INITIALIZATION & DOM BINDINGS ---
+        window.onload = function() {
+            renderTabs();
+            updatePromptDisplay();
+            printWelcomeBanner();
+
+            const cmdInput = document.getElementById("cmd-input");
+            cmdInput.addEventListener("keydown", handleInputKeydown);
+            cmdInput.addEventListener("input", handleInputChange);
+
+            // Toggle applications menu
+            document.getElementById("btn-apps-menu").addEventListener("click", (e) => {
+                e.stopPropagation();
+                const menu = document.getElementById("apps-dropdown");
+                menu.classList.toggle("hidden");
+            });
+
+            document.addEventListener("click", () => {
+                document.getElementById("apps-dropdown").classList.add("hidden");
+            });
+
+            // Sound Toggle
+            document.getElementById("btn-sound-toggle").addEventListener("click", () => {
+                soundEnabled = !soundEnabled;
+                initAudio();
+                document.getElementById("icon-sound-off").classList.toggle("hidden", soundEnabled);
+                document.getElementById("icon-sound-on").classList.toggle("hidden", !soundEnabled);
+            });
+
+            // CTF Drawer Toggle
+            document.getElementById("btn-mission-drawer").addEventListener("click", toggleMissionDrawer);
+            document.getElementById("btn-new-tab").addEventListener("click", addNewTab);
+
+            // Clock update
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById("top-clock").innerText = now.toTimeString().split(' ')[0];
+            }, 1000);
+
+            // Random CPU fluctuation
+            setInterval(() => {
+                const cpu = Math.floor(3 + Math.random() * 12);
+                document.getElementById("cpu-stat").innerText = cpu + "%";
+            }, 3000);
+        };
+
+        function focusCommandInput(e) {
+            // If user clicked terminal body, focus input unless they selected text
+            const selection = window.getSelection();
+            if (selection.toString().length === 0) {
+                const input = document.getElementById("cmd-input");
+                input.focus();
+                // scroll to bottom
+                const termBody = document.getElementById("terminal-body");
+                termBody.scrollTop = termBody.scrollHeight;
+            }
+        }
+
+        function toggleMissionDrawer() {
+            const drawer = document.getElementById("mission-drawer");
+            drawer.classList.toggle("hidden");
+            drawer.classList.toggle("flex");
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        function resetTerminalSession() {
+            if (confirm("Reset terminal session and file system to default?")) {
+                localStorage.removeItem("kali_vfs");
+                fileSystem = JSON.parse(JSON.stringify(initialFileSystem));
+                currentDir = "/home/kali";
+                currentUser = "kali";
+                isMsfMode = false;
+                document.getElementById("terminal-output").innerHTML = "";
+                printWelcomeBanner();
+                updatePromptDisplay();
+            }
+        }
+
+        // --- 5. TABS MANAGEMENT ---
+        function renderTabs() {
+            const tabList = document.getElementById("tab-list");
+            tabList.innerHTML = activeTabs.map(tab => `
+                <div class="flex items-center space-x-2 px-3 py-1 rounded-t-md text-xs font-mono-kali cursor-pointer transition ${tab.active ? 'bg-[#0d1118] text-sky-400 border-t-2 border-sky-500' : 'bg-[#182030] text-slate-400 hover:bg-[#1f293d]'}" onclick="switchTab(${tab.id})">
+                    <span>${tab.title}</span>
+                    ${activeTabs.length > 1 ? `<span onclick="closeTab(event, ${tab.id})" class="hover:text-rose-400 px-1">×</span>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function switchTab(id) {
+            activeTabs.forEach(t => t.active = (t.id === id));
+            const tab = activeTabs.find(t => t.id === id);
+            if (tab) {
+                currentDir = tab.dir;
+            }
+            renderTabs();
+            updatePromptDisplay();
+        }
+
+        function addNewTab() {
+            const newId = activeTabs.length ? Math.max(...activeTabs.map(t => t.id)) + 1 : 1;
+            activeTabs.forEach(t => t.active = false);
+            activeTabs.push({ id: newId, title: `zsh — ${currentUser}@kali`, active: true, dir: "/home/kali" });
+            currentDir = "/home/kali";
+            renderTabs();
+            updatePromptDisplay();
+            printWelcomeBanner();
+        }
+
+        function closeTab(e, id) {
+            e.stopPropagation();
+            if (activeTabs.length <= 1) return;
+            activeTabs = activeTabs.filter(t => t.id !== id);
+            if (!activeTabs.some(t => t.active)) {
+                activeTabs[0].active = true;
+                currentDir = activeTabs[0].dir;
+            }
+            renderTabs();
+            updatePromptDisplay();
+        }
+
+        // --- 6. ZSH PROMPT RENDERING ---
+        function updatePromptDisplay() {
+            const line1 = document.getElementById("prompt-line-1");
+            const line2 = document.getElementById("prompt-line-2");
+            const topTitle = document.getElementById("top-panel-title");
+
+            let displayDir = currentDir;
+            if (currentDir.startsWith("/home/kali")) {
+                displayDir = "~" + currentDir.substring(10);
+            } else if (currentDir === "/home") {
+                displayDir = "~..";
+            }
+
+            topTitle.innerText = `${currentUser}@kali: ${displayDir}`;
+
+            if (isMsfMode) {
+                line1.innerHTML = `<span class="text-rose-500 font-bold">msf6</span> <span class="text-slate-400">&gt;</span>`;
+                line2.innerHTML = `<span class="text-slate-500"></span>`;
+            } else {
+                const userColor = currentUser === "root" ? "text-rose-500" : "text-sky-400";
+                const promptSymbol = currentUser === "root" ? "#" : "$";
+                const symbolColor = currentUser === "root" ? "text-rose-500" : "text-sky-400";
+
+                line1.innerHTML = `
+                    <span class="text-emerald-400">┌──(${userColor}%B${currentUser}㉿kali%b${classCheckColor(currentUser)})-[%B<span class="text-slate-200">${displayDir}</span>%b${classCheckColor(currentUser)}]</span>
+                `;
+                line2.innerHTML = `
+                    <span class="text-emerald-400">└─</span><span class="${symbolColor} font-bold">${promptSymbol}</span>
+                `;
+            }
+        }
+
+        function classCheckColor(user) {
+            return user === "root" ? '<span class="text-rose-500"></span>' : '<span class="text-sky-400"></span>';
+        }
+
+        // --- 7. INPUT HANDLING & AUTOCOMPLETE ---
+        function handleInputChange(e) {
+            playKeyBeep();
+            const val = e.target.value;
+            const ghost = document.getElementById("autocomplete-ghost");
+            if (!val) {
+                ghost.innerText = "";
+                return;
+            }
+
+            // Find matching command
+            const match = kaliCommands.find(c => c.startsWith(val));
+            if (match && match !== val) {
+                ghost.innerText = match;
+            } else {
+                ghost.innerText = "";
+            }
+        }
+
+        function handleInputKeydown(e) {
+            const input = document.getElementById("cmd-input");
+            const ghost = document.getElementById("autocomplete-ghost");
+
+            if (e.key === "Enter") {
+                const cmd = input.value.trim();
+                input.value = "";
+                ghost.innerText = "";
+                if (cmd) {
+                    commandHistory.push(cmd);
+                    historyIndex = commandHistory.length;
+                    executeCommand(cmd);
+                } else {
+                    printPromptAndNewLine("");
+                }
+            } else if (e.key === "Tab") {
+                e.preventDefault();
+                const val = input.value;
+                const match = kaliCommands.find(c => c.startsWith(val));
+                if (match) {
+                    input.value = match;
+                    ghost.innerText = "";
+                }
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    input.value = commandHistory[historyIndex];
+                    ghost.innerText = "";
+                }
+            } else if (e.key === "ArrowDown") {
+                e.preventDefault();
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    input.value = commandHistory[historyIndex];
+                    ghost.innerText = "";
+                } else {
+                    historyIndex = commandHistory.length;
+                    input.value = "";
+                    ghost.innerText = "";
+                }
+            } else if (e.key === "l" && e.ctrlKey) {
+                e.preventDefault();
+                executeCommand("clear");
+            } else if (e.key === "c" && e.ctrlKey) {
+                e.preventDefault();
+                printCommandEcho(input.value + "^C");
+                input.value = "";
+                ghost.innerText = "";
+                isMsfMode = false;
+                updatePromptDisplay();
+                scrollToBottom();
+            }
+        }
+
+        function insertCommand(cmd) {
+            const input = document.getElementById("cmd-input");
+            input.value = cmd;
+            input.focus();
+        }
+
+        function runQuickCommand(cmd) {
+            executeCommand(cmd);
+        }
+
+        function runMenuTool(cmd) {
+            document.getElementById("apps-dropdown").classList.add("hidden");
+            executeCommand(cmd);
+        }
+
+        // --- 8. COMMAND EXECUTOR & VIRTUAL OS LOGIC ---
+        function printCommandEcho(cmdText) {
+            const output = document.getElementById("terminal-output");
+            let displayDir = currentDir.startsWith("/home/kali") ? "~" + currentDir.substring(10) : currentDir;
+            if (isMsfMode) {
+                output.innerHTML += `
+                    <div class="space-y-0.5 mt-2">
+                        <div><span class="text-rose-500 font-bold">msf6</span> <span class="text-slate-400">&gt;</span> <span class="text-slate-100">${escapeHtml(cmdText)}</span></div>
+                    </div>
+                `;
+            } else {
+                const userColor = currentUser === "root" ? "text-rose-500" : "text-sky-400";
+                const promptSymbol = currentUser === "root" ? "#" : "$";
+                output.innerHTML += `
+                    <div class="space-y-0.5 mt-2">
+                        <div class="text-emerald-400">┌──(${userColor}%B${currentUser}㉿kali%b)-[<span class="text-slate-200">${displayDir}</span>]</div>
+                        <div><span class="text-emerald-400">└─</span><span class="${userColor} font-bold">${promptSymbol}</span> <span class="text-slate-100">${escapeHtml(cmdText)}</span></div>
+                    </div>
+                `;
+            }
+        }
+
+        function printOutput(htmlContent) {
+            const output = document.getElementById("terminal-output");
+            output.innerHTML += `<div class="text-slate-300 my-1 space-y-1">${htmlContent}</div>`;
+            scrollToBottom();
+        }
+
+        function printPromptAndNewLine(cmd) {
+            if (cmd) printCommandEcho(cmd);
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            const termBody = document.getElementById("terminal-body");
+            termBody.scrollTop = termBody.scrollHeight;
+        }
+
+        function executeCommand(rawCmd) {
+            const trimmed = rawCmd.trim();
+            printPromptAndNewLine(trimmed);
+
+            if (!trimmed) return;
+
+            try {
+                window.parent?.postMessage({
+                    type: "PRAXIS_KALI_ACTION",
+                    command: trimmed,
+                    timestamp: Date.now()
+                }, "*");
+            } catch (e) {}
+
+            // Handle Metasploit mode special commands
+            if (isMsfMode) {
+                handleMsfCommand(trimmed);
+                return;
+            }
+
+            const parts = parseArgs(trimmed);
+            const cmd = parts[0];
+            const args = parts.slice(1);
+
+            switch (cmd) {
+                case "help":
+                    printOutput(`
+                        <div class="text-sky-400 font-semibold mb-1">Kali Linux Terminal Simulator — Available Commands:</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-300">
+                            <div><strong class="text-emerald-400">nmap &lt;ip&gt;</strong> — Network port scanner</div>
+                            <div><strong class="text-emerald-400">gobuster</strong> — Web directory brute-forcer</div>
+                            <div><strong class="text-emerald-400">john</strong> — Password hash cracker</div>
+                            <div><strong class="text-emerald-400">msfconsole</strong> — Launch Metasploit framework</div>
+                            <div><strong class="text-emerald-400">sqlmap</strong> — SQL injection testing tool</div>
+                            <div><strong class="text-emerald-400">nikto</strong> — Web server vulnerability scanner</div>
+                            <div><strong class="text-emerald-400">hydra</strong> — Network login brute-forcer</div>
+                            <div><strong class="text-emerald-400">python3</strong> — Run python exploit script</div>
+                            <div><strong class="text-emerald-400">ls / cd / pwd</strong> — File system navigation</div>
+                            <div><strong class="text-emerald-400">cat / nano</strong> — View or edit text files</div>
+                            <div><strong class="text-emerald-400">neofetch</strong> — System architecture info</div>
+                            <div><strong class="text-emerald-400">cmatrix</strong> — Digital rain simulation</div>
+                            <div><strong class="text-emerald-400">htop</strong> — Interactive process monitor</div>
+                            <div><strong class="text-emerald-400">sudo su</strong> — Switch to root user</div>
+                            <div><strong class="text-emerald-400">clear</strong> — Clear terminal screen</div>
+                        </div>
+                    `);
+                    break;
+
+                case "clear":
+                    document.getElementById("terminal-output").innerHTML = "";
+                    break;
+
+                case "pwd":
+                    printOutput(currentDir);
+                    break;
+
+                case "whoami":
+                    printOutput(currentUser);
+                    break;
+
+                case "id":
+                    if (currentUser === "root") {
+                        printOutput("uid=0(root) gid=0(root) groups=0(root)");
+                    } else {
+                        printOutput("uid=1000(kali) gid=1000(kali) groups=1000(kali),4(adm),24(cdrom),27(sudo),30(dip),46(plugdev)");
+                    }
+                    break;
+
+                case "uname":
+                    printOutput("Linux kali 6.8.0-kali2-amd64 #1 SMP PREEMPT_DYNAMIC Kali 6.8.9-1kali1 (2026-05-12) x86_64 GNU/Linux");
+                    break;
+
+                case "ls":
+                    handleLs(args);
+                    break;
+
+                case "cd":
+                    handleCd(args[0]);
+                    break;
+
+                case "cat":
+                    handleCat(args[0]);
+                    break;
+
+                case "nano":
+                    handleNano(args[0]);
+                    break;
+
+                case "neofetch":
+                    printNeofetch();
+                    break;
+
+                case "cmatrix":
+                    startMatrix();
+                    break;
+
+                case "htop":
+                    document.getElementById("htop-overlay").classList.remove("hidden");
+                    break;
+
+                case "sudo":
+                    if (args[0] === "su" || args[0] === "sudo" || args.join(" ") === "su -") {
+                        currentUser = "root";
+                        updatePromptDisplay();
+                        printOutput("<span class='text-emerald-400'>[+] Switched to root user successfully.</span>");
+                    } else {
+                        printOutput(`[sudo] password for ${currentUser}: <br><span class='text-emerald-400'>[+] Root privileges granted.</span>`);
+                        currentUser = "root";
+                        updatePromptDisplay();
+                    }
+                    break;
+
+                case "su":
+                    currentUser = "root";
+                    updatePromptDisplay();
+                    printOutput("<span class='text-emerald-400'>[+] Authentication successful. UID: 0</span>");
+                    break;
+
+                case "nmap":
+                    handleNmap(args);
+                    break;
+
+                case "gobuster":
+                    handleGobuster(args);
+                    break;
+
+                case "john":
+                    handleJohn(args);
+                    break;
+
+                case "sqlmap":
+                    handleSqlmap(args);
+                    break;
+
+                case "nikto":
+                    handleNikto(args);
+                    break;
+
+                case "hydra":
+                    handleHydra(args);
+                    break;
+
+                case "msfconsole":
+                    startMsfConsole();
+                    break;
+
+                case "python3":
+                    handlePython3(args);
+                    break;
+
+                case "ping":
+                    handlePing(args);
+                    break;
+
+                case "history":
+                    printOutput(commandHistory.map((c, i) => `${i + 1}  ${c}`).join('<br>'));
+                    break;
+
+                case "date":
+                    printOutput(new Date().toUTCString());
+                    break;
+
+                case "echo":
+                    printOutput(args.join(" "));
+                    break;
+
+                default:
+                    printOutput(`<span class="text-rose-400">zsh: command not found: ${escapeHtml(cmd)}</span>. Type <strong class="text-sky-300">help</strong> for available pentest tools.`);
+                    break;
+            }
+        }
+
+        // --- 9. VIRTUAL FILESYSTEM COMMAND HANDLERS ---
+        function resolvePath(targetPath) {
+            if (!targetPath) return currentDir;
+            let resolved = targetPath;
+            if (targetPath.startsWith("~")) {
+                resolved = "/home/kali" + targetPath.substring(1);
+            } else if (!targetPath.startsWith("/")) {
+                resolved = currentDir === "/" ? "/" + targetPath : currentDir + "/" + targetPath;
+            }
+
+            // Normalize path
+            const segments = resolved.split("/");
+            const stack = [];
+            for (const seg of segments) {
+                if (!seg || seg === ".") continue;
+                if (seg === "..") {
+                    stack.pop();
+                } else {
+                    stack.push(seg);
+                }
+            }
+            return "/" + stack.join("/");
+        }
+
+        function handleLs(args) {
+            let targetDir = currentDir;
+            let showAll = false;
+            let showLong = false;
+
+            for (const arg of args) {
+                if (arg.startsWith("-")) {
+                    if (arg.includes("a")) showAll = true;
+                    if (arg.includes("l")) showLong = true;
+                } else {
+                    targetDir = resolvePath(arg);
+                }
+            }
+
+            const node = fileSystem[targetDir];
+            if (!node || node.type !== "dir") {
+                printOutput(`<span class="text-rose-400">ls: cannot access '${targetDir}': No such file or directory</span>`);
+                return;
+            }
+
+            let items = [...node.children];
+            if (showAll) {
+                items.unshift(".", "..");
+            } else {
+                items = items.filter(i => !i.startsWith("."));
+            }
+
+            if (showLong) {
+                let out = `<div class="text-xs text-slate-400 mb-1">total ${items.length * 4}</div>`;
+                out += items.map(name => {
+                    let fullPath = targetDir === "/" ? "/" + name : targetDir + "/" + name;
+                    let childNode = fileSystem[fullPath];
+                    let perms = childNode ? childNode.permissions : (node.type === 'dir' ? 'drwxr-xr-x' : '-rw-r--r--');
+                    let size = childNode && childNode.size ? childNode.size : 128;
+                    let colorClass = childNode && childNode.type === 'dir' ? 'text-sky-400 font-bold' : (perms.includes('x') ? 'text-emerald-400 font-bold' : 'text-slate-200');
+                    return `<div class="grid grid-cols-12 gap-2"><span class="col-span-3">${perms}</span><span class="col-span-2 text-right">kali</span><span class="col-span-2 text-right">${size}</span><span class="col-span-5 ${colorClass}">${name}</span></div>`;
+                }).join('');
+                printOutput(out);
+            } else {
+                let out = `<div class="flex flex-wrap gap-x-6 gap-y-1">`;
+                out += items.map(name => {
+                    let fullPath = targetDir === "/" ? "/" + name : targetDir + "/" + name;
+                    let childNode = fileSystem[fullPath];
+                    let colorClass = childNode && childNode.type === 'dir' ? 'text-sky-400 font-bold' : (perms => perms && perms.includes('x') ? 'text-emerald-400 font-bold' : 'text-slate-200')(childNode?.permissions);
+                    return `<span class="${colorClass}">${name}</span>`;
+                }).join('');
+                out += `</div>`;
+                printOutput(out);
+            }
+        }
+
+        function handleCd(path) {
+            if (!path || path === "~") {
+                currentDir = "/home/kali";
+                updatePromptDisplay();
+                return;
+            }
+            const target = resolvePath(path);
+            const node = fileSystem[target];
+            if (node && node.type === "dir") {
+                currentDir = target;
+                updatePromptDisplay();
+            } else if (fileSystem[target] && fileSystem[target].type === "file") {
+                printOutput(`<span class="text-rose-400">cd: not a directory: ${path}</span>`);
+            } else {
+                printOutput(`<span class="text-rose-400">cd: no such file or directory: ${path}</span>`);
+            }
+        }
+
+        function handleCat(path) {
+            if (!path) {
+                printOutput("cat: missing file operand");
+                return;
+            }
+            const target = resolvePath(path);
+            const node = fileSystem[target];
+            if (node && node.type === "file") {
+                printOutput(`<pre class="whitespace-pre-wrap font-mono-kali text-slate-200">${escapeHtml(node.content)}</pre>`);
+            } else if (node && node.type === "dir") {
+                printOutput(`cat: ${path}: Is a directory`);
+            } else {
+                printOutput(`cat: ${path}: No such file or directory`);
+            }
+        }
+
+        function handleNano(path) {
+            if (!path) {
+                printOutput("nano: missing filename");
+                return;
+            }
+            const target = resolvePath(path);
+            activeNanoPath = target;
+            let node = fileSystem[target];
+            let content = node ? node.content : "";
+
+            document.getElementById("nano-filename").innerText = path;
+            document.getElementById("nano-textarea").value = content;
+            document.getElementById("nano-overlay").classList.remove("hidden");
+            document.getElementById("nano-textarea").focus();
+        }
+
+        function saveNanoFile() {
+            if (!activeNanoPath) return;
+            const content = document.getElementById("nano-textarea").value;
+            if (!fileSystem[activeNanoPath]) {
+                // Create new file
+                fileSystem[activeNanoPath] = { type: "file", permissions: "-rw-r--r--", size: content.length, content: content };
+                // Add to parent directory
+                const lastSlash = activeNanoPath.lastIndexOf("/");
+                const parentDir = lastSlash === 0 ? "/" : activeNanoPath.substring(0, lastSlash);
+                const fileName = activeNanoPath.substring(lastSlash + 1);
+                if (fileSystem[parentDir] && !fileSystem[parentDir].children.includes(fileName)) {
+                    fileSystem[parentDir].children.push(fileName);
+                }
+            } else {
+                fileSystem[activeNanoPath].content = content;
+                fileSystem[activeNanoPath].size = content.length;
+            }
+            saveVFS();
+            document.getElementById("nano-status").innerText = "Saved successfully!";
+            setTimeout(() => { document.getElementById("nano-status").innerText = "Modified"; }, 1500);
+        }
+
+        function closeNanoEditor() {
+            document.getElementById("nano-overlay").classList.add("hidden");
+            document.getElementById("cmd-input").focus();
+        }
+
+        // --- 10. ADVANCED SECURITY TOOLS SIMULATION ---
+        function handleNmap(args) {
+            const target = args.find(a => !a.startsWith("-")) || "10.10.11.45";
+            printOutput(`
+                Starting Nmap 7.94 ( https://nmap.org ) at 2026-02-05 20:25 UTC<br>
+                Nmap scan report for ${target}<br>
+                Host is up (0.00034s latency).<br>
+                Not shown: 997 closed ports<br>
+                PORT     STATE SERVICE VERSION<br>
+                <span class="text-emerald-400">21/tcp   open  ftp     vsftpd 3.0.3</span><br>
+                <span class="text-emerald-400">80/tcp   open  http    Apache httpd 2.4.41 ((Ubuntu))</span><br>
+                <span class="text-emerald-400">2222/tcp open  ssh     OpenSSH 8.2p1 Ubuntu 4ubuntu0.9</span><br>
+                <br>
+                Service detection performed. Nmap done: 1 IP address (1 host up) scanned in 4.21 seconds.
+            `);
+            ctfProgress.obj1 = true;
+            updateCtfMissionUI();
+        }
+
+        function handleGobuster(args) {
+            printOutput(`
+                ===============================================================<br>
+                Gobuster v3.6<br>
+                [+] Url:                     http://10.10.11.45<br>
+                [+] Method:                  GET<br>
+                [+] Threads:                 10<br>
+                [+] Wordlist:                /usr/share/wordlists/dirb/common.txt<br>
+                ===============================================================<br>
+                /images               (Status: 301) [Size: 312] [--> http://10.10.11.45/images/]<br>
+                /assets               (Status: 301) [Size: 312] [--> http://10.10.11.45/assets/]<br>
+                <span class="text-emerald-400">/admin_login.php      (Status: 200) [Size: 1420]</span><br>
+                <span class="text-emerald-400">/config.php           (Status: 200) [Size: 45]</span><br>
+                /uploads              (Status: 301) [Size: 313] [--> http://10.10.11.45/uploads/]<br>
+                ===============================================================<br>
+                Finished
+            `);
+            ctfProgress.obj2 = true;
+            updateCtfMissionUI();
+        }
+
+        function handleJohn(args) {
+            printOutput(`
+                Using default input encoding: UTF-8<br>
+                Loaded 1 password hash (sha512crypt, crypt(3) $6$rounds=656000 [SHA512 256/256 AVX2 4x])<br>
+                Will run 2 OpenMP threads<br>
+                Press 'q' or Ctrl-C to abort, almost any other key for status<br>
+                <span class="text-emerald-400">sunflower      (admin)</span><br>
+                1g 0:00:00:03 DONE (2026-02-05 20:28) 0.2857g/s 656158p/s 656158c/s 656158C/s sunflower..<br>
+                Use the "--show" option to display all cracked passwords.
+            `);
+            ctfProgress.obj3 = true;
+            updateCtfMissionUI();
+        }
+
+        function handleSqlmap(args) {
+            printOutput(`
+                <span class="text-sky-300">[*] starting at 20:30:12</span><br>
+                [+] resuming back-end DBMS 'mysql'<br>
+                [+] testing connection to the target URL<br>
+                sqlmap resumed the following injection point(s) from stored session:<br>
+                ---<br>
+                Parameter: id (GET)<br>
+                Type: boolean-based blind<br>
+                Title: MySQL >= 5.0 boolean-based blind - Where, Having, Order By, or Group By clause<br>
+                Payload: id=1' AND 3421=3421 AND 'vVjW'='vVjW<br>
+                ---<br>
+                <span class="text-emerald-400">[+] fetched 4 databases: information_schema, blackbox_db, mysql, performance_schema</span>
+            `);
+        }
+
+        function handleNikto(args) {
+            printOutput(`
+                - Nikto v2.5.0<br>
+                + Target IP: 10.10.11.45<br>
+                + Target Hostname: 10.10.11.45<br>
+                + Target Port: 80<br>
+                + Server: Apache/2.4.41 (Ubuntu)<br>
+                + The anti-clickjacking X-Frame-Options header is not present.<br>
+                + Uncommon header 'x-mod-pagespeed' found.<br>
+                <span class="text-amber-400">+ /admin_login.php: Admin login page found with potential weak session token.</span><br>
+                + 7935 requests: 0 errors - 2 items found on remote host
+            `);
+        }
+
+        function handleHydra(args) {
+            printOutput(`
+                Hydra v9.5 (c) 2023 by van Hauser/THC - Please do not use without permission or legal authorization.<br>
+                [DATA] max 16 tasks per 1 server, overall 16 tasks, 14328000 wordlist entries, 1 try (to admin@10.10.11.45)<br>
+                [DATA] attacking ssh://10.10.11.45:22/<br>
+                <span class="text-emerald-400">[22][ssh] host: 10.10.11.45   login: admin   password: sunflower</span><br>
+                1 of 1 target completed, 1 valid password found
+            `);
+        }
+
+        function handlePython3(args) {
+            const script = args[0];
+            if (script && script.includes("exploit.py")) {
+                printOutput(`
+                    [*] Sending payload to 10.10.11.45 on port 80...<br>
+                    [*] Bypassing authentication filter via CVE-2026-8812...<br>
+                    <span class="text-emerald-400">[+] Buffer overflow successful! Spawned interactive root shell.</span><br>
+                    <span class="text-amber-300 font-bold">ROOT FLAG: HTB{k4l1_l1nux_3xpl01t_m4st3r_2026}</span>
+                `);
+                currentUser = "root";
+                updatePromptDisplay();
+                ctfProgress.obj4 = true;
+                updateCtfMissionUI();
+            } else {
+                printOutput("Python 3.12.3 (main, Apr 9 2026, 08:09:18) [GCC 13.2.0] on linux<br>Type \"help\", \"copyright\", \"credits\" or \"license\" for more information.");
+            }
+        }
+
+        function handlePing(args) {
+            const host = args[0] || "10.10.11.45";
+            printOutput(`
+                PING ${host} (${host}) 56(84) bytes of data.<br>
+                64 bytes from ${host}: icmp_seq=1 ttl=54 time=14.2 ms<br>
+                64 bytes from ${host}: icmp_seq=2 ttl=54 time=13.8 ms<br>
+                64 bytes from ${host}: icmp_seq=3 ttl=54 time=14.1 ms<br>
+                <br>
+                --- ${host} ping statistics ---<br>
+                3 packets transmitted, 3 received, 0% packet loss, time 2004ms
+            `);
+        }
+
+        // --- 11. METASPLOIT (MSFCONSOLE) SIMULATION ---
+        function startMsfConsole() {
+            isMsfMode = true;
+            updatePromptDisplay();
+            printOutput(`
+                <pre class="ascii-art text-rose-500 font-bold text-xs">
+       MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+       MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+       MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+          MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+             MMMMMMMMMMMMMMMMMMMMMMMMMM
+                MMMMMMMMMMMMMMMMMMMM
+                   MMMMMMMMMMMMMM
+                      MMMMMMMM
+                         MM
+                </pre>
+                <div class="text-slate-200">
+                    <span class="text-sky-400">Metasploit Framework Console</span><br>
+                    [+] Starting the Metasploit Framework console...<br>
+                    [-] <span class="text-slate-400">No database connected.</span><br>
+                    <span class="text-slate-400">Type 'help' for active Metasploit commands.</span>
+                </div>
+            `);
+        }
+
+        function handleMsfCommand(cmd) {
+            if (cmd === "exit" || cmd === "quit") {
+                isMsfMode = false;
+                updatePromptDisplay();
+                printOutput("Exited msfconsole.");
+                return;
+            }
+            if (cmd === "help") {
+                printOutput(`
+                    <strong class="text-rose-400">Metasploit Core Commands:</strong><br>
+                    - search &lt;exploit&gt;<br>
+                    - use &lt;module_path&gt;<br>
+                    - show options<br>
+                    - set RHOSTS &lt;ip&gt;<br>
+                    - exploit / run
+                `);
+            } else if (cmd.startsWith("search")) {
+                printOutput(`
+                    Matching Modules<br>
+                    ================<br>
+                    <span class="text-emerald-400">exploit/linux/http/blackbox_rce_2026</span> — BlackBox RCE / Auth Bypass
+                `);
+            } else if (cmd.startsWith("use")) {
+                printOutput(`[+] Using configured module: <span class="text-sky-300">exploit/linux/http/blackbox_rce_2026</span>`);
+            } else if (cmd.startsWith("set RHOSTS")) {
+                printOutput(`RHOSTS => 10.10.11.45`);
+            } else if (cmd === "show options") {
+                printOutput(`
+                    Module options (exploit/linux/http/blackbox_rce_2026):<br><br>
+                    Name       Current Setting  Required  Description<br>
+                    ----       ---------------  --------  -----------<br>
+                    RHOSTS     10.10.11.45      yes       The target host<br>
+                    RPORT      80               yes       The target port
+                `);
+            } else if (cmd === "exploit" || cmd === "run") {
+                printOutput(`
+                    <span class="text-sky-300">[*] Started reverse TCP handler on 10.10.14.23:4444</span><br>
+                    <span class="text-sky-300">[*] Running automatic check against 10.10.11.45...</span><br>
+                    <span class="text-emerald-400">[+] The target is vulnerable.</span><br>
+                    <span class="text-emerald-400">[+] Command shell session 1 opened (10.10.14.23:4444 -> 10.10.11.45:49182) at 2026-02-05 20:35:10</span><br>
+                    <br>
+                    <span class="text-amber-300 font-bold">ROOT FLAG: HTB{m3t4spl01t_rce_m4st3r_2026_x}</span>
+                `);
+                currentUser = "root";
+                ctfProgress.obj4 = true;
+                updateCtfMissionUI();
+            } else {
+                printOutput(`Unknown msf command: ${escapeHtml(cmd)}`);
+            }
+        }
+
+        // --- 12. MATRIX RAIN SIMULATION (`cmatrix`) ---
+        let matrixInterval = null;
+        function startMatrix() {
+            const overlay = document.getElementById("matrix-overlay");
+            overlay.classList.remove("hidden");
+            const canvas = document.getElementById("matrix-canvas");
+            const ctx = canvas.getContext("2d");
+
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight - 40;
+
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+-<>~\\/|";
+            const fontSize = 14;
+            const columns = Math.floor(canvas.width / fontSize);
+            const drops = Array(columns).fill(1);
+
+            function draw() {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = "#23d18b";
+                ctx.font = fontSize + "px monospace";
+
+                for (let i = 0; i < drops.length; i++) {
+                    const text = chars.charAt(Math.floor(Math.random() * chars.length));
+                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                        drops[i] = 0;
+                    }
+                    drops[i]++;
+                }
+            }
+
+            matrixInterval = setInterval(draw, 35);
+        }
+
+        function stopMatrix() {
+            if (matrixInterval) clearInterval(matrixInterval);
+            document.getElementById("matrix-overlay").classList.add("hidden");
+            document.getElementById("cmd-input").focus();
+        }
+
+        function closeHtop() {
+            document.getElementById("htop-overlay").classList.add("hidden");
+            document.getElementById("cmd-input").focus();
+        }
+
+        // --- 13. CTF MISSION PROGRESS UPDATER ---
+        function updateCtfMissionUI() {
+            let completedCount = 0;
+            for (let i = 1; i <= 4; i++) {
+                if (ctfProgress[`obj${i}`]) {
+                    completedCount++;
+                    const card = document.getElementById(`obj-card-${i}`);
+                    const badge = document.getElementById(`obj-status-${i}`);
+                    const icon = document.getElementById(`obj-icon-${i}`);
+
+                    card.classList.add("border-emerald-500/40", "bg-emerald-950/20");
+                    badge.innerText = "COMPLETED";
+                    badge.classList.remove("text-slate-500");
+                    badge.classList.add("text-emerald-400");
+                    icon.classList.remove("bg-slate-800", "border-slate-600");
+                    icon.classList.add("bg-emerald-500", "text-slate-950", "font-bold");
+                    icon.innerHTML = "✓";
+                }
+            }
+            document.getElementById("mission-badge").innerText = `${completedCount}/4`;
+        }
+
+        // --- 14. HELPER UTILITIES ---
+        function parseArgs(str) {
+            const args = [];
+            let current = "";
+            let inQuotes = false;
+            for (let i = 0; i < str.length; i++) {
+                const char = str[i];
+                if (char === '"' || char === "'") {
+                    inQuotes = !inQuotes;
+                } else if (char === " " && !inQuotes) {
+                    if (current) args.push(current);
+                    current = "";
+                } else {
+                    current += char;
+                }
+            }
+            if (current) args.push(current);
+            return args;
+        }
+
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function printWelcomeBanner() {
+            printOutput(`
+                <div class="text-sky-400 font-bold mb-1">
+                    ██╗  ██╗ █████╗ ██╗     ██╗    ███████╗██╗███╗   ██╗██╗   ██╗██╗  ██╗<br>
+                    ██║ ██╔╝██╔══██╗██║     ██║    ██╔════╝██║████╗  ██║██║   ██║██║ ██╔╝<br>
+                    █████╔╝ ███████║██║     ██║    ███████╗██║██╔██╗ ██║██║   ██║█████╔╝ <br>
+                    ██╔═██╗ ██╔══██║██║     ██║    ╚════██║██║██║╚██╗██║██║   ██║██╔═██╗ <br>
+                    ██║  ██╗██║  ██║███████╗██║    ███████║██║██║ ╚████║╚██████╔╝██║  ██╗<br>
+                    ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝    ╚══════╝╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝
+                </div>
+                <div class="text-slate-300 text-xs mb-2">
+                    Kali GNU/Linux Rolling 2026.3 — Kernel 6.8.0-kali2-amd64<br>
+                    Documentation: <span class="text-sky-300">https://www.kali.org/docs/</span> | CTF Lab Target: <strong class="text-rose-400">10.10.11.45</strong>
+                </div>
+                <div class="text-slate-400 text-xs mb-3">
+                    Type <strong class="text-emerald-400">help</strong> to view available security tools, or click <strong class="text-sky-300">CTF Lab</strong> in the top panel to start hacking.
+                </div>
+            `);
+        }
+    </script>
+</body>
+</html>

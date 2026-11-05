@@ -73,25 +73,7 @@ export function HeroAnimation({ onComplete }: { onComplete?: () => void }) {
       ctx.fillStyle = "#020202";
       ctx.fillRect(0, 0, width, height);
 
-      // 2. Faint Technical Green Grid
-      ctx.strokeStyle = "rgba(0, 255, 65, 0.05)";
-      ctx.lineWidth = 1;
-      
-      const gridSpacing = 40;
-      const offset = (time * 10) % gridSpacing;
-      
-      ctx.beginPath();
-      for (let x = offset; x < width; x += gridSpacing) {
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-      }
-      for (let y = offset; y < height; y += gridSpacing) {
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-      }
-      ctx.stroke();
-
-      // 3. Delicate Radiating Starburst
+      // 2. Delicate Radiating Starburst
       const cx = width / 2;
       const cy = height / 2;
       const numRays = 40;
