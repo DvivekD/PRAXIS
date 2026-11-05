@@ -17,35 +17,71 @@ function SeekerDashboardContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const domainParam = searchParams.get("domain");
-  const domain = domainParam || "engineering"; // Default to engineering if nothing assigned
+  const domain = domainParam || "engineering";
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [liveProblems, setLiveProblems] = useState<any[]>([]);
   const [showJudgeMode, setShowJudgeMode] = useState(false);
 
-  // All available domains metadata
+  // All 7 available domains metadata aligned with Aura Commerce Black Friday crisis
   const domainMetadata: Record<string, any> = {
-    engineering: { label: "Engineering", skin: "ide", accent: "#00ff41", scenarios: [
-      "Critical system outage: Debug a distributed rate limiter causing cascaded failures.",
-      "Memory leak detected: Resolve an OOM issue in the high-throughput worker node.",
-      "Database deadlock: Optimize the locking strategy for the transaction ledger."
-    ]},
-    sales: { label: "Sales", skin: "roleplay", accent: "#f59e0b", scenarios: [
-      "High-stakes negotiation: Close an enterprise contract with a skeptical CTO.",
-      "Client churn risk: Save a key account after a major service disruption.",
-      "Channel partnership: Structure a new revenue-sharing agreement with a Tier-1 partner."
-    ]},
-    product: { label: "Product", skin: "inbox", accent: "#818cf8", scenarios: [
-      "Strategic pivot: Redefine the pricing model after a competitor's aggressive move.",
-      "Roadmap prioritization: Balance technical debt vs. high-growth feature requests.",
-      "Product-Market Fit: Analyze user feedback to define the MVP for a new AI vertical."
-    ]},
-    data: { label: "Data", domain: "data", skin: "ide", accent: "#06b6d4", scenarios: [
-      "Data integrity crisis: Optimize a failing ETL pipeline dropping production records.",
-      "Query bottleneck: Resolve a 30s latency issue in the real-time analytics engine.",
-      "Pipeline migration: Sync petabyte-scale datasets across regional clusters."
-    ]},
+    engineering: {
+      label: "Engineering",
+      skin: "ide",
+      accent: "#00ff41",
+      scenarios: [
+        "Checkout Concurrency Glitch: Debug the double-charge race condition in checkout.ts before Black Friday.",
+      ],
+    },
+    sales: {
+      label: "Sales",
+      skin: "call",
+      accent: "#f59e0b",
+      scenarios: [
+        "Enterprise Renewal Call: Negotiate $250k contract with skeptical VP Sam Jenkins on live voice.",
+      ],
+    },
+    product: {
+      label: "Product",
+      skin: "inbox",
+      accent: "#818cf8",
+      scenarios: [
+        "Black Friday Triage: Prioritize the customer-facing payment bug and freeze marketing email blast.",
+      ],
+    },
+    data: {
+      label: "Data",
+      skin: "ide",
+      accent: "#06b6d4",
+      scenarios: [
+        "Inflated DAU Anomaly: Fix duplicate transaction joins using DISTINCT to restore metric truth.",
+      ],
+    },
+    sre: {
+      label: "SRE / War Room",
+      skin: "warroom",
+      accent: "#ef4444",
+      scenarios: [
+        "Sev-1 Checkout Outage: Diagnose 42% 5xx errors and execute 1-click rollback to v2.4.0.",
+      ],
+    },
+    support: {
+      label: "Customer Support",
+      skin: "helpdesk",
+      accent: "#10b981",
+      scenarios: [
+        "Payment Incident Queue: Spot duplicate billing patterns and execute unified batch escalation to SRE.",
+      ],
+    },
+    brand: {
+      label: "Brand & Social",
+      skin: "social",
+      accent: "#ec4899",
+      scenarios: [
+        "Viral Crisis Control: Respond to viral quote-tweets and swing public sentiment dial positive.",
+      ],
+    },
   };
 
   const activeDomain = domainMetadata[domain.toLowerCase()] || domainMetadata.engineering;
@@ -70,10 +106,7 @@ function SeekerDashboardContent() {
     setLoading(true);
     try {
       const result = await startSimulationAction(domain, 50, "test-user-id", problemId);
-
-      // Store initial state for the simulation page to pick up
       localStorage.setItem(`praxis_session_${result.sessionId}`, JSON.stringify(result.state));
-
       router.push(`/simulation/${result.sessionId}?skin=${skin}&domain=${domain}`);
     } catch (err) {
       console.error(err);
@@ -85,10 +118,14 @@ function SeekerDashboardContent() {
     <div style={{ minHeight: "100vh", background: "#080c14", color: "#fff", fontFamily: "'JetBrains Mono', monospace", padding: "40px 24px" }}>
       <div style={{ maxWidth: 1000, margin: "0 auto" }}>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "1px solid #00ff41", paddingBottom: 24, marginBottom: 40 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: `1px solid ${activeDomain.accent}`, paddingBottom: 24, marginBottom: 40 }}>
           <div>
-            <div style={{ fontSize: 12, color: "#00ff41", textTransform: "uppercase", letterSpacing: "2px", marginBottom: 8 }}>[ SYS.ACTIVE ]</div>
-            <h1 style={{ fontSize: 24, fontWeight: 900, textTransform: "uppercase", margin: 0, color: "#00ff41" }}>SEEKER_DASHBOARD</h1>
+            <div style={{ fontSize: 12, color: activeDomain.accent, textTransform: "uppercase", letterSpacing: "2px", marginBottom: 8 }}>
+              [ SYS.ACTIVE // AURA COMMERCE ]
+            </div>
+            <h1 style={{ fontSize: 24, fontWeight: 900, textTransform: "uppercase", margin: 0, color: activeDomain.accent }}>
+              SEEKER_DASHBOARD
+            </h1>
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 11, color: "#666", textTransform: "uppercase" }}>Current Tier</div>
@@ -99,7 +136,7 @@ function SeekerDashboardContent() {
         <h2 style={{ fontSize: 16, color: "#aaa", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 24 }}>&gt; ASSIGNED_PROBLEMS</h2>
 
         {fetching ? (
-          <div style={{ padding: 40, textAlign: "center", color: "#00ff41", border: "1px solid #00ff41", background: "rgba(0,255,65,0.05)" }}>
+          <div style={{ padding: 40, textAlign: "center", color: activeDomain.accent, border: `1px solid ${activeDomain.accent}`, background: "rgba(255,255,255,0.02)" }}>
             [ FETCHING_LIVE_NODES... ]
           </div>
         ) : (
@@ -112,7 +149,7 @@ function SeekerDashboardContent() {
                 </h2>
                 <div 
                   onClick={() => setShowJudgeMode(!showJudgeMode)}
-                  style={{ fontSize: 11, color: "#666", cursor: "pointer", border: "1px solid #333", padding: "4px 8px" }}
+                  style={{ fontSize: 11, color: "#94a3b8", cursor: "pointer", border: "1px solid #334155", padding: "4px 8px", background: "#0f172a" }}
                 >
                   {showJudgeMode ? "[ HIDE_OTHER_DOMAINS ]" : "[ SWITCH_DOMAIN_OVERRIDE ]"}
                 </div>
@@ -120,7 +157,7 @@ function SeekerDashboardContent() {
 
               {/* Judge Mode Override */}
               {showJudgeMode && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 24, padding: 12, background: "rgba(255,255,255,0.03)", border: "1px dashed #333" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 8, marginBottom: 24, padding: 12, background: "rgba(255,255,255,0.03)", border: "1px dashed #334155" }}>
                   {Object.keys(domainMetadata).map(d => (
                     <button 
                       key={d}
@@ -153,7 +190,7 @@ function SeekerDashboardContent() {
                   >
                     <div>
                       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-                        <span style={{ fontSize: 10, padding: "2px 6px", border: `1px solid ${activeDomain.accent}`, color: activeDomain.accent, textTransform: "uppercase" }}>{prob.company?.name || "PARTNER_NODE"}</span>
+                        <span style={{ fontSize: 10, padding: "2px 6px", border: `1px solid ${activeDomain.accent}`, color: activeDomain.accent, textTransform: "uppercase" }}>{prob.company?.name || "AURA_COMMERCE"}</span>
                         <span style={{ fontSize: 10, color: "#555" }}>[ {activeDomain.skin.toUpperCase()} ]</span>
                       </div>
                       <div style={{ fontSize: 16, color: "#fff", fontWeight: 700 }}>{prob.title}</div>
@@ -184,13 +221,13 @@ function SeekerDashboardContent() {
                   >
                     <div>
                       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-                        <span style={{ fontSize: 10, padding: "2px 6px", border: `1px solid ${activeDomain.accent}`, color: activeDomain.accent, textTransform: "uppercase" }}>GEN_NODE_{i+1}</span>
+                        <span style={{ fontSize: 10, padding: "2px 6px", border: `1px solid ${activeDomain.accent}`, color: activeDomain.accent, textTransform: "uppercase" }}>BLACK_FRIDAY_NODE_{i+1}</span>
                         <span style={{ fontSize: 10, color: "#555" }}>[ {activeDomain.skin.toUpperCase()} ]</span>
                       </div>
                       <div style={{ fontSize: 15, color: "#fff", marginBottom: 4, fontWeight: 700 }}>{scenarioText.split(":")[0]}</div>
                       <div style={{ fontSize: 13, color: "#888" }}>{scenarioText.split(":")[1]}</div>
                     </div>
-                    <div style={{ color: activeDomain.accent, fontSize: 14, fontWeight: 900 }}>{loading ? "..." : "INIT ▶"}</div>
+                    <div style={{ color: activeDomain.accent, fontSize: 14, fontWeight: 900 }}>{loading ? "..." : "LAUNCH ▶"}</div>
                   </motion.div>
                 ))}
               </div>

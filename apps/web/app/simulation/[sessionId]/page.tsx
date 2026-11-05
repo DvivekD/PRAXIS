@@ -6,18 +6,26 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { sendMessageAction } from "../../../actions/eval";
-import PraxisInbox from "../../../components/PraxisInbox";
-const Editor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
-
-const AvatarScene = dynamic(() => import("../../../components/Avatar/AvatarScene"), { ssr: false });
 import { VoiceSession } from "../../../components/Avatar/VoiceSession";
 
-// Domain-specific color schemes
+// 7 Dedicated Domain Environments
+import TerminalEnvironment from "../../../components/Environments/TerminalEnvironment";
+import SalesCallEnvironment from "../../../components/Environments/SalesCallEnvironment";
+import InboxEnvironment from "../../../components/Environments/InboxEnvironment";
+import DataWorkspaceEnvironment from "../../../components/Environments/DataWorkspaceEnvironment";
+import WarRoomEnvironment from "../../../components/Environments/WarRoomEnvironment";
+import HelpdeskEnvironment from "../../../components/Environments/HelpdeskEnvironment";
+import SocialCommandEnvironment from "../../../components/Environments/SocialCommandEnvironment";
+import DemoPitchGuide from "../../../components/Environments/DemoPitchGuide";
+
 const DOMAIN_THEMES: Record<string, { accent: string; accentDim: string; label: string }> = {
-  engineering: { accent: "#00ff41", accentDim: "rgba(0,255,65,0.15)", label: "ENGINEERING" },
-  sales: { accent: "#f59e0b", accentDim: "rgba(245,158,11,0.15)", label: "SALES" },
-  product: { accent: "#818cf8", accentDim: "rgba(129,140,248,0.15)", label: "PRODUCT" },
-  data: { accent: "#06b6d4", accentDim: "rgba(6,182,212,0.15)", label: "DATA" },
+  engineering: { accent: "#00ff41", accentDim: "rgba(0,255,65,0.15)", label: "ENGINEERING // TERMINAL" },
+  sales: { accent: "#f59e0b", accentDim: "rgba(245,158,11,0.15)", label: "SALES // CALL CONSOLE" },
+  product: { accent: "#818cf8", accentDim: "rgba(129,140,248,0.15)", label: "PRODUCT // INBOX" },
+  data: { accent: "#06b6d4", accentDim: "rgba(6,182,212,0.15)", label: "DATA // SQL STUDIO" },
+  sre: { accent: "#ef4444", accentDim: "rgba(239,68,68,0.15)", label: "SRE // INCIDENT WAR ROOM" },
+  support: { accent: "#10b981", accentDim: "rgba(16,185,129,0.15)", label: "CUSTOMER SUPPORT // HELPDESK" },
+  brand: { accent: "#ec4899", accentDim: "rgba(236,72,153,0.15)", label: "BRAND & SOCIAL // CRISIS DESK" },
 };
 
 function SimulationContent() {
@@ -25,219 +33,43 @@ function SimulationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = (params?.sessionId as string) || "";
+  const domainRaw = (searchParams?.get("domain") || "engineering").toLowerCase();
   const skin = searchParams?.get("skin") || "ide";
-  const domain = searchParams?.get("domain") || "engineering";
+  const demoParam = searchParams?.get("demo");
+  const demoMode = demoParam === "true" || demoParam === "1";
+
+  // Normalize domain
+  const domain = DOMAIN_THEMES[domainRaw] ? domainRaw : "engineering";
+  const theme = DOMAIN_THEMES[domain];
+
+  // ─── ALL HOOKS MUST RESIDE AT THE TOP LEVEL (RULES OF HOOKS) ───
   const [scenarioDesc, setScenarioDesc] = useState("");
   const [problemTitle, setProblemTitle] = useState("");
-
-  const theme = DOMAIN_THEMES[domain] || DOMAIN_THEMES.engineering;
-
   const [messages, setMessages] = useState<{ role: string; content: string; persona?: string }[]>([]);
-  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [cognitiveLoad, setCognitiveLoad] = useState(50);
   const [turns, setTurns] = useState(0);
-  const [activeTab, setActiveTab] = useState<"chat" | "code" | "terminal" | "inbox">(skin === "inbox" ? "inbox" : "chat");
-  const [activePerson, setActivePerson] = useState({ name: "Agent", role: "Stakeholder", escalation: 0 });
+  const [activePerson, setActivePerson] = useState({ name: "Alex Chen", role: "Lead SRE", escalation: 0 });
   const [dimensions, setDimensions] = useState<Record<string, number>>({});
   const [codeContent, setCodeContent] = useState("");
-  const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
-  const [sessionStarted, setSessionStarted] = useState(false);
-  const [bootPhase, setBootPhase] = useState(0); // 0 = booting, 1-N = lines appearing, -1 = done
+  const [bootPhase, setBootPhase] = useState(0); // 0 = boot, >0 = lines, -1 = ready
   const [bootLines, setBootLines] = useState<string[]>([]);
-  const [terminalInput, setTerminalInput] = useState("");
-  const [terminalStage, setTerminalStage] = useState(0);
 
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const turnStartTime = useRef(Date.now());
-
-  // Voice agent state (Gemini Live API)
-  const [voiceMode, setVoiceMode] = useState<"off" | "persona" | "guide">("off");
+  // Voice agent states
+  const [voiceMode, setVoiceMode] = useState<"off" | "persona" | "guide">(domain === "sales" ? "persona" : "off");
   const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
-  const [coachLogs, setCoachLogs] = useState<Array<{ id: string; event: string; detail: string; timestamp: number }>>([]);
-  const [showCoachLogs, setShowCoachLogs] = useState(false);
   const voiceSessionRef = useRef<VoiceSessionHandle>(null);
 
-  // Guide mode telemetry tracking refs
+  // Telemetry refs
+  const turnStartTime = useRef(Date.now());
   const codeEditCountRef = useRef(0);
   const lastCodePushTimeRef = useRef(0);
   const lastActivityTimeRef = useRef(Date.now());
   const simulationStartTimeRef = useRef(Date.now());
   const lastIdlePushedTimeRef = useRef(0);
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  // Boot-up animation
-  useEffect(() => {
-    const envLines: Record<string, string[]> = {
-      engineering: [
-        "[ PRAXIS ] Initializing Engineering Environment...",
-        "[ PRAXIS ] Loading IDE kernel ━━━━━━━━━━━━━ OK",
-        "[ PRAXIS ] Mounting code sandbox ━━━━━━━━━━ OK",
-        "[ PRAXIS ] Spawning terminal emulator ━━━━━ OK",
-        `[ PRAXIS ] Connecting to stakeholder: Alex Chen (PM)`,
-        "[ PRAXIS ] Observer Layer 1 ━━━━━━━━━━━━━━ ACTIVE",
-        "[ PRAXIS ] Persona Layer 2 ━━━━━━━━━━━━━━ ACTIVE",
-        "[ PRAXIS ] Cognitive tracker online ━━━━━━ READY",
-        "",
-        "▶ ENVIRONMENT READY — SIMULATION STARTING",
-      ],
-      sales: [
-        "[ PRAXIS ] Initializing Sales Roleplay Environment...",
-        "[ PRAXIS ] Loading voice synthesis engine ━━ OK",
-        "[ PRAXIS ] Mounting 3D avatar pipeline ━━━━ OK",
-        "[ PRAXIS ] Loading negotiation scenario ━━━ OK",
-        `[ PRAXIS ] Connecting to stakeholder: Jordan Mitchell (VP Sales)`,
-        "[ PRAXIS ] Observer Layer 1 ━━━━━━━━━━━━━━ ACTIVE",
-        "[ PRAXIS ] Persona Layer 2 ━━━━━━━━━━━━━━ ACTIVE",
-        "[ PRAXIS ] Escalation tracker online ━━━━━ READY",
-        "",
-        "▶ ENVIRONMENT READY — ROLEPLAY STARTING",
-      ],
-      product: [
-        "[ PRAXIS ] Initializing Product Strategy Environment...",
-        "[ PRAXIS ] Loading stakeholder graph ━━━━━━ OK",
-        "[ PRAXIS ] Mounting decision framework ━━━ OK",
-        "[ PRAXIS ] Loading competitive analysis ━━━ OK",
-        `[ PRAXIS ] Connecting to stakeholder: Taylor Brooks (CEO)`,
-        "[ PRAXIS ] Observer Layer 1 ━━━━━━━━━━━━━━ ACTIVE",
-        "[ PRAXIS ] Persona Layer 2 ━━━━━━━━━━━━━━ ACTIVE",
-        "[ PRAXIS ] Communication tracker online ━━ READY",
-        "",
-        "▶ ENVIRONMENT READY — SIMULATION STARTING",
-      ],
-      data: [
-        "[ PRAXIS ] Initializing Data Pipeline Environment...",
-        "[ PRAXIS ] Loading SQL workspace ━━━━━━━━━━ OK",
-        "[ PRAXIS ] Mounting query analyzer ━━━━━━━ OK",
-        "[ PRAXIS ] Loading dataset schemas ━━━━━━━ OK",
-        `[ PRAXIS ] Connecting to stakeholder: Riley Kim (Platform Lead)`,
-        "[ PRAXIS ] Observer Layer 1 ━━━━━━━━━━━━━━ ACTIVE",
-        "[ PRAXIS ] Persona Layer 2 ━━━━━━━━━━━━━━ ACTIVE",
-        "[ PRAXIS ] Efficiency tracker online ━━━━━ READY",
-        "",
-        "▶ ENVIRONMENT READY — SIMULATION STARTING",
-      ],
-    };
-
-    const lines = envLines[domain] || envLines.engineering;
-    let lineIndex = 0;
-
-    const interval = setInterval(() => {
-      if (lineIndex < lines.length) {
-        setBootLines(prev => [...prev, lines[lineIndex]]);
-        setBootPhase(lineIndex + 1);
-        lineIndex++;
-      } else {
-        clearInterval(interval);
-        setTimeout(() => setBootPhase(-1), 600); // Small delay before transitioning
-      }
-    }, 180);
-
-    return () => clearInterval(interval);
-  }, [domain]);
-
-  // Initialize session from state passed through localStorage or initial fetch
-  useEffect(() => {
-    // Prime the speech synthesis engine on mount to fix Chrome loading bugs
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      try {
-        window.speechSynthesis.getVoices();
-      } catch {}
-    }
-
-    if (!sessionId) {
-      setSessionStarted(true);
-      return;
-    }
-
-    try {
-      const stored = localStorage.getItem(`praxis_session_${sessionId}`);
-      if (stored) {
-        const state = JSON.parse(stored);
-        if (state && Array.isArray(state.messages)) {
-          setMessages(state.messages.map((m: any) => ({ ...m, persona: m.role === "assistant" ? state.activePersona?.name : undefined })));
-        }
-        if (state?.setupCode) setCodeContent(state.setupCode);
-        if (state?.activePersona) setActivePerson(state.activePersona);
-        if (state?.currentScenario) setScenarioDesc(state.currentScenario);
-        if (state?.problemTitle) setProblemTitle(state.problemTitle);
-        if (state?.skinType === "ide") {
-          setTerminalOutput([
-            `$ praxis --domain ${domain} --session ${(sessionId || "").slice(0, 8)}`,
-            "",
-            `[PRAXIS] Simulation environment initialized`,
-            `[PRAXIS] Domain: ${domain.toUpperCase()}`,
-            `[PRAXIS] Skin: ${skin.toUpperCase()}`,
-            `[PRAXIS] Observer: ACTIVE — tracking 8 process dimensions`,
-            "",
-          ]);
-        }
-        setSessionStarted(true);
-        return;
-      }
-    } catch (err) {
-      console.warn("[PRAXIS] Failed loading stored session state:", err);
-    }
-
-    setMessages([
-      { role: "assistant", content: `Welcome to your ${domain} simulation. I'll brief you on the situation shortly. What questions do you have?`, persona: "Agent" },
-    ]);
-    setSessionStarted(true);
-  }, [sessionId, domain, skin]);
-
-  // ─── Boot-up screen ───────────────────────────────────────
-  if (bootPhase >= 0) {
-    return (
-      <div style={{ height: "100vh", width: "100vw", background: "#020202", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'JetBrains Mono', monospace" }}>
-        <div style={{ width: "100%", maxWidth: 600, padding: "0 24px" }}>
-          <div style={{ fontSize: 10, color: theme.accent, textTransform: "uppercase", letterSpacing: "3px", marginBottom: 24, textAlign: "center" }}>
-            ◈ PRAXIS // {theme.label} ENVIRONMENT
-          </div>
-          <div style={{ background: "#050505", border: `1px solid ${theme.accent}30`, padding: 20, minHeight: 280 }}>
-            {bootLines.map((line, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.15 }}
-                style={{
-                  fontSize: 12,
-                  lineHeight: 2,
-                  color: line?.includes("OK") || line?.includes("ACTIVE") || line?.includes("READY")
-                    ? theme.accent
-                    : line?.includes("▶")
-                    ? "#fff"
-                    : line?.includes("Connecting")
-                    ? "#f59e0b"
-                    : "#666",
-                  fontWeight: line?.includes("▶") ? 700 : 400,
-                }}
-              >
-                {line || "\u00A0"}
-              </motion.div>
-            ))}
-            {bootPhase > 0 && bootPhase <= 8 && (
-              <span style={{ color: theme.accent, animation: "blink 1s step-end infinite" }}>▌</span>
-            )}
-          </div>
-          {/* Progress bar */}
-          <div style={{ marginTop: 12, height: 2, background: "#1a1a1a", overflow: "hidden" }}>
-            <motion.div
-              animate={{ width: `${Math.min(100, bootPhase * 11)}%` }}
-              style={{ height: "100%", background: theme.accent }}
-            />
-          </div>
-        </div>
-        <style>{`@keyframes blink { 50% { opacity: 0; } }`}</style>
-      </div>
-    );
-  }
-
-  const submitMessage = async (messageContent: string, fromVoice: boolean = false) => {
+  // 1. Submit message telemetry callback
+  const submitMessage = useCallback(async (messageContent: string, fromVoice: boolean = false) => {
     setLoading(true);
     const timeOnTurn = (Date.now() - turnStartTime.current) / 1000;
     turnStartTime.current = Date.now();
@@ -265,38 +97,29 @@ function SimulationContent() {
         activePersona: activePerson,
       };
 
-      const data = await sendMessageAction(sessionId, messageContent, {
-        flightTimeVariance: Math.random() * 80 + 20,
-        pauseCount: Math.floor(Math.random() * 4),
-        wordsPerMinute: 55 + Math.random() * 45,
-        timeOnCurrentTurn: timeOnTurn,
-        backspaceRatio: Math.random() * 0.2,
-        tabSwitchCount: Math.floor(Math.random() * 3),
-        codeEditCount: skin === "ide" ? Math.floor(Math.random() * 5) : 0,
-      }, currentState);
+      const data = await sendMessageAction(
+        sessionId,
+        messageContent,
+        {
+          flightTimeVariance: Math.random() * 80 + 20,
+          pauseCount: Math.floor(Math.random() * 4),
+          wordsPerMinute: 55 + Math.random() * 45,
+          timeOnCurrentTurn: timeOnTurn,
+          backspaceRatio: Math.random() * 0.2,
+          tabSwitchCount: Math.floor(Math.random() * 2),
+          codeEditCount: codeEditCountRef.current,
+        },
+        currentState
+      );
 
-      if (!fromVoice && voiceMode === "off" && domain === "sales" && typeof window !== "undefined" && "speechSynthesis" in window) {
-        // Ensure voices are loaded (Chrome bug workaround)
-        const voices = window.speechSynthesis.getVoices();
-        window.speechSynthesis.cancel();
-
-        // Small delay helps bypass some browser autoplay restrictions when tied to an async event
-        setTimeout(() => {
-          const utterance = new SpeechSynthesisUtterance(data.response);
-          utterance.rate = 1.05;
-          utterance.pitch = 0.95;
-          // Try to pick a decent English voice if available
-          const preferredVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural')));
-          if (preferredVoice) utterance.voice = preferredVoice;
-          window.speechSynthesis.speak(utterance);
-        }, 50);
-      }
-
-      setMessages(prev => [...prev, {
-        role: "assistant",
-        content: data.response,
-        persona: data.persona?.name || "Agent",
-      }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: data.response,
+          persona: data.persona?.name || activePerson.name,
+        },
+      ]);
       setCognitiveLoad(data.state.cognitiveLoadScore);
       setTurns(data.state.resolutionTurns);
       if (data.persona) setActivePerson(data.persona);
@@ -306,79 +129,26 @@ function SimulationContent() {
         setTimeout(() => router.push(`/results/${sessionId}`), 2000);
       }
     } catch (err) {
-      console.error(err);
-      setMessages(prev => [...prev, { role: "assistant", content: "Connection issue. Can you rephrase your approach?", persona: "System" }]);
+      console.error("[PRAXIS] Telemetry dispatch failed:", err);
     } finally {
       setLoading(false);
-      inputRef.current?.focus();
     }
-  };
+  }, [sessionId, messages, cognitiveLoad, turns, scenarioDesc, problemTitle, codeContent, skin, dimensions, activePerson, router]);
 
-  const handleSend = () => {
-    if (!input.trim() || loading) return;
-    const content = input;
-    setMessages(prev => [...prev, { role: "user", content }]);
-    setInput("");
-    submitMessage(content);
-  };
+  // 2. Action interaction callback
+  const handleInteract = useCallback(async (actionText: string) => {
+    setMessages((prev) => [...prev, { role: "user", content: actionText }]);
+    await submitMessage(actionText);
+  }, [submitMessage]);
 
-  const handleInteract = (actionText: string) => {
-    if (loading) return;
-    const content = `[ACTION] ${actionText}`;
-    setMessages(prev => [...prev, { role: "user", content }]);
-    submitMessage(content);
-  };
-
-  const handleTerminalCommand = () => {
-    if (!terminalInput.trim()) return;
-    const cmd = terminalInput.trim();
-    setTerminalInput("");
-    lastActivityTimeRef.current = Date.now();
-
-    if (voiceMode !== "off") {
-      const reactionPrompt = cmd === "npm run debug"
-        ? "Candidate executed 'npm run debug' and detected a memory leak in the rate limiter. Speak a quick 1-sentence observation to guide their next move."
-        : cmd === "pm2 restart all"
-        ? "Candidate executed 'pm2 restart all' to apply the patch. Congratulate them on stabilizing production in 1 spoken sentence."
-        : `Candidate executed terminal command '$ ${cmd}'. Give a quick, natural 1-sentence spoken reaction or tip.`;
-
-      voiceSessionRef.current?.speakProactiveContext(reactionPrompt);
-    }
-    
-    setTerminalOutput(prev => {
-      const newOut = [...prev, `$ ${cmd}`];
-      
-      if (cmd === "npm run debug" && terminalStage === 0) {
-        setTerminalStage(1);
-        newOut.push("[PRAXIS] Running debugger...");
-        newOut.push("[PRAXIS] Found 1 memory leak in distributed rate limiter.");
-        newOut.push("[PRAXIS] Awaiting system restart to apply patch.");
-      } else if (cmd === "pm2 restart all" && terminalStage === 1) {
-        setTerminalStage(2);
-        newOut.push("[PRAXIS] Restarting all services...");
-        newOut.push("[PRAXIS] PASS — System stable.");
-        newOut.push("[VICTORY] Routing to evaluation metrics...");
-        
-        handleInteract("[VICTORY] Candidate solved problem via terminal commands.");
-        setTimeout(() => router.push(`/results/${sessionId}`), 2500);
-      } else if (cmd === "npm run debug" || cmd === "pm2 restart all") {
-        newOut.push(`[PRAXIS] ERROR: Command out of sequence. Check system state.`);
-      } else {
-        newOut.push(`[PRAXIS] Command not recognized: ${cmd}`);
-      }
-      return newOut;
-    });
-  };
-
+  // 3. Voice turn callback
   const handleVoiceUserTurn = useCallback(async (spokenText: string) => {
     if (!spokenText.trim()) return;
-    if (voiceMode === "persona") {
-      setMessages(prev => [...prev, { role: "user", content: spokenText }]);
-      await submitMessage(spokenText, true);
-    }
-  }, [voiceMode]);
+    setMessages((prev) => [...prev, { role: "user", content: spokenText }]);
+    await submitMessage(spokenText, true);
+  }, [submitMessage]);
 
-  // Debounced code editor telemetry push (at most once every 15s)
+  // 4. Code editor telemetry debounce
   useEffect(() => {
     if (!codeContent) return;
     codeEditCountRef.current += 1;
@@ -396,7 +166,7 @@ function SimulationContent() {
     }
   }, [codeContent, voiceMode]);
 
-  // 45s Inactivity proactive nudge timer for voice mentor
+  // 5. Inactivity timer for proactive mentor voice
   useEffect(() => {
     if (voiceMode === "off") return;
 
@@ -414,357 +184,201 @@ function SimulationContent() {
     return () => clearInterval(interval);
   }, [voiceMode, problemTitle]);
 
-  const cogColor = cognitiveLoad > 70 ? "#ef4444" : cognitiveLoad > 40 ? "#f59e0b" : "#22c55e";
-  const escalationColor = activePerson.escalation >= 2 ? "#ef4444" : activePerson.escalation >= 1 ? "#f59e0b" : "#22c55e";
+  // 6. Boot animation sequence
+  useEffect(() => {
+    const lines = [
+      `[ AURA COMMERCE ] Initializing ${theme.label}...`,
+      `[ AURA CLUSTER ] Node aura-prod-04 (T-minus 6h to Black Friday) ━━ OK`,
+      `[ TELEMETRY ] Observer Layer 1 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ACTIVE`,
+      `[ EVALUATION ] Behavioral kernel tracking 8 dimensions ━━━━━━━━━ READY`,
+      `▶ ENTERING WORK ENVIRONMENT: ${domain.toUpperCase()}`,
+    ];
 
-  const gridLayout = "60fr 40fr";
-  const availableTabs = skin === "roleplay" ? ["chat"] : skin === "inbox" ? ["inbox", "chat"] : ["chat", "code", "terminal"];
+    let idx = 0;
+    const interval = setInterval(() => {
+      if (idx < lines.length) {
+        setBootLines((prev) => [...prev, lines[idx]]);
+        setBootPhase(idx + 1);
+        idx++;
+      } else {
+        clearInterval(interval);
+        setTimeout(() => setBootPhase(-1), demoMode ? 100 : 350);
+      }
+    }, demoMode ? 80 : 160);
+
+    return () => clearInterval(interval);
+  }, [domain, theme.label, demoMode]);
+
+  // 7. Initialize session from localStorage
+  useEffect(() => {
+    if (!sessionId) return;
+    try {
+      const stored = localStorage.getItem(`praxis_session_${sessionId}`);
+      if (stored) {
+        const state = JSON.parse(stored);
+        if (state?.currentScenario) setScenarioDesc(state.currentScenario);
+        if (state?.problemTitle) setProblemTitle(state.problemTitle);
+        if (state?.activePersona) setActivePerson(state.activePersona);
+        if (state?.cognitiveLoadScore) setCognitiveLoad(state.cognitiveLoadScore);
+        if (state?.dimensionalScores) setDimensions(state.dimensionalScores);
+      }
+    } catch (e) {
+      console.warn("[PRAXIS] Failed to parse stored state:", e);
+    }
+  }, [sessionId]);
+
+  // ─── CONDITIONAL BOOT SCREEN (SAFE AFTER ALL HOOKS ARE DECLARED) ───
+  if (bootPhase >= 0) {
+    return (
+      <div style={{ height: "100vh", width: "100vw", background: "#020307", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'JetBrains Mono', monospace" }}>
+        <div style={{ width: "100%", maxWidth: 640, padding: "0 24px" }}>
+          <div style={{ fontSize: 11, color: theme.accent, letterSpacing: "3px", marginBottom: 20, textAlign: "center", fontWeight: 800 }}>
+            ◈ PRAXIS // {theme.label}
+          </div>
+          <div style={{ background: "#060911", border: `1px solid ${theme.accent}40`, padding: 24, minHeight: 220, borderRadius: 8 }}>
+            {bootLines.map((line, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                style={{
+                  fontSize: 12,
+                  lineHeight: 2,
+                  color: line.includes("OK") || line.includes("ACTIVE") || line.includes("READY") ? theme.accent : "#94a3b8",
+                  fontWeight: line.includes("▶") ? 800 : 400,
+                }}
+              >
+                {line}
+              </motion.div>
+            ))}
+            {bootPhase > 0 && <span style={{ color: theme.accent }}>▌</span>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── DOMAIN ENVIRONMENT DISPATCH ───
+  const renderDomainEnvironment = () => {
+    switch (domain) {
+      case "sales":
+        return (
+          <SalesCallEnvironment
+            sessionId={sessionId}
+            onAction={handleInteract}
+            onComplete={() => router.push(`/results/${sessionId}`)}
+            demoMode={demoMode}
+            voiceSessionRef={voiceSessionRef}
+            voiceMode={voiceMode}
+            setVoiceMode={setVoiceMode}
+            analyserNode={analyserNode}
+          />
+        );
+
+      case "product":
+        return (
+          <InboxEnvironment
+            sessionId={sessionId}
+            onAction={handleInteract}
+            onComplete={() => router.push(`/results/${sessionId}`)}
+            demoMode={demoMode}
+          />
+        );
+
+      case "data":
+        return (
+          <DataWorkspaceEnvironment
+            sessionId={sessionId}
+            onAction={handleInteract}
+            onComplete={() => router.push(`/results/${sessionId}`)}
+            demoMode={demoMode}
+          />
+        );
+
+      case "sre":
+        return (
+          <WarRoomEnvironment
+            sessionId={sessionId}
+            onAction={handleInteract}
+            onComplete={() => router.push(`/results/${sessionId}`)}
+            demoMode={demoMode}
+          />
+        );
+
+      case "support":
+        return (
+          <HelpdeskEnvironment
+            sessionId={sessionId}
+            onAction={handleInteract}
+            onComplete={() => router.push(`/results/${sessionId}`)}
+            demoMode={demoMode}
+          />
+        );
+
+      case "brand":
+        return (
+          <SocialCommandEnvironment
+            sessionId={sessionId}
+            onAction={handleInteract}
+            onComplete={() => router.push(`/results/${sessionId}`)}
+            demoMode={demoMode}
+          />
+        );
+
+      case "engineering":
+      default:
+        return (
+          <TerminalEnvironment
+            sessionId={sessionId}
+            onAction={handleInteract}
+            onComplete={() => router.push(`/results/${sessionId}`)}
+            demoMode={demoMode}
+          />
+        );
+    }
+  };
 
   return (
-    <div style={{ height: "100vh", width: "100vw", display: "grid", gridTemplateColumns: gridLayout, background: "#020202", fontFamily: "'JetBrains Mono', monospace", overflow: "hidden" }}>
+    <div style={{ position: "relative", width: "100vw", height: "100vh", overflow: "hidden" }}>
+      {/* Floating Pitch Walkthrough Cheat-Sheet for Judges */}
+      <DemoPitchGuide
+        domain={domain}
+        onQuickSolve={() => {
+          handleInteract(`[DEMO_QUICK_SOLVE] Candidate executed pitch walkthrough for ${domain}`);
+          setTimeout(() => router.push(`/results/${sessionId}`), 2200);
+        }}
+      />
 
-      {/* LEFT PANEL */}
-      <div style={{ display: "flex", flexDirection: "column", borderRight: `1px solid ${theme.accent}20` }}>
+      {/* Primary Immersive Work Environment */}
+      {renderDomainEnvironment()}
 
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: `1px solid ${theme.accent}20`, background: "#050505" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 8, height: 8, background: theme.accent, boxShadow: `0 0 8px ${theme.accent}` }} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", textTransform: "uppercase" }}>PRAXIS // {theme.label}</span>
-            <span style={{ fontSize: 10, padding: "2px 6px", background: theme.accentDim, color: theme.accent, fontWeight: 700 }}>LIVE</span>
-          </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            {/* Real-time Gemini Live Voice Toggle (OFF -> PERSONA -> GUIDE) */}
-            <button
-              onClick={() => {
-                setVoiceMode(prev => {
-                  if (prev === "off") return "persona";
-                  if (prev === "persona") return "guide";
-                  return "off";
-                });
-              }}
-              title="Click to toggle Voice Agent (OFF -> PERSONA -> GUIDE)"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "3px 9px",
-                borderRadius: 4,
-                border: voiceMode === "off"
-                  ? "1px solid #333"
-                  : voiceMode === "persona"
-                  ? `1px solid ${theme.accent}`
-                  : "1px solid #38bdf8",
-                background: voiceMode === "off"
-                  ? "#0a0a0a"
-                  : voiceMode === "persona"
-                  ? theme.accentDim
-                  : "rgba(56, 189, 248, 0.15)",
-                color: voiceMode === "off" ? "#666" : voiceMode === "persona" ? theme.accent : "#38bdf8",
-                fontSize: 10,
-                fontWeight: 700,
-                cursor: "pointer",
-                letterSpacing: "0.5px",
-                fontFamily: "inherit",
-              }}
-            >
-              <span>{voiceMode === "off" ? "🔇" : "🎙️"}</span>
-              <span>
-                {voiceMode === "off"
-                  ? "VOICE: OFF"
-                  : voiceMode === "persona"
-                  ? `PERSONA: ${activePerson.name.toUpperCase()}`
-                  : "GUIDE: MENTOR"}
-              </span>
-            </button>
-
-            {/* Coach Log Badge */}
-            {(voiceMode === "guide" || coachLogs.length > 0) && (
-              <button
-                onClick={() => setShowCoachLogs(prev => !prev)}
-                title="View AI Guide suggestions and coach log"
-                style={{
-                  padding: "3px 8px",
-                  borderRadius: 4,
-                  border: "1px solid rgba(56, 189, 248, 0.4)",
-                  background: showCoachLogs ? "#38bdf8" : "rgba(56, 189, 248, 0.1)",
-                  color: showCoachLogs ? "#000" : "#38bdf8",
-                  fontSize: 10,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                HINTS ({coachLogs.length})
-              </button>
-            )}
-
-            <span style={{ fontSize: 11, color: "#666" }}>TURN {turns}/10</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <div style={{ width: 6, height: 6, background: cogColor, boxShadow: `0 0 6px ${cogColor}` }} />
-              <span style={{ fontSize: 11, color: cogColor }}>LOAD {cognitiveLoad}%</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <div style={{ width: 6, height: 6, background: escalationColor, boxShadow: `0 0 6px ${escalationColor}` }} />
-              <span style={{ fontSize: 11, color: escalationColor }}>ESC {activePerson.escalation}/3</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Tab Bar */}
-        {availableTabs.length > 1 && (
-          <div style={{ display: "flex", borderBottom: `1px solid ${theme.accent}20`, background: "#050505" }}>
-            {availableTabs.map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab as any)}
-                style={{
-                  padding: "8px 16px", fontSize: 11, fontWeight: 700,
-                  textTransform: "uppercase", letterSpacing: "1px",
-                  color: activeTab === tab ? theme.accent : "#444",
-                  background: "transparent", border: "none", cursor: "pointer",
-                  borderBottom: activeTab === tab ? `2px solid ${theme.accent}` : "2px solid transparent",
-                }}
-              >
-                {tab === "chat" ? "◆ STAKEHOLDER" : tab === "code" ? "◇ EDITOR" : tab === "inbox" ? "✉ INBOX" : "▪ TERMINAL"}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Tab Content */}
-        <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-          {activeTab === "inbox" && (
-            <PraxisInbox
-              themeAccent={theme.accent}
-              onReply={(subject) => {
-                setActiveTab("chat");
-                setInput(`Re: ${subject} - `);
-                inputRef.current?.focus();
-              }}
-            />
-          )}
-
-          {activeTab === "chat" && (
-            <>
-              <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-                {messages.map((msg, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    style={{
-                      maxWidth: "85%",
-                      alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
-                      padding: "10px 14px",
-                      background: msg.role === "user" ? `${theme.accent}15` : "#0a0a0a",
-                      border: `1px solid ${msg.role === "user" ? `${theme.accent}40` : "#222"}`,
-                      fontSize: 13, lineHeight: 1.7, color: "#ccc",
-                    }}
-                  >
-                    {msg.role === "assistant" && (
-                      <div style={{ fontSize: 10, color: theme.accent, fontWeight: 700, marginBottom: 4, textTransform: "uppercase" }}>
-                        {msg.persona || activePerson.name} — {activePerson.role}
-                      </div>
-                    )}
-                    {msg.content}
-                  </motion.div>
-                ))}
-                {loading && (
-                  <div style={{ alignSelf: "flex-start", padding: "10px 14px", background: "#0a0a0a", border: "1px solid #222" }}>
-                    <span style={{ color: theme.accent, animation: "blink 1s step-end infinite" }}>▌</span>
-                  </div>
-                )}
-                <div ref={chatEndRef} />
-              </div>
-
-              <div style={{ padding: "12px 16px", borderTop: `1px solid ${theme.accent}20`, display: "flex", gap: 8 }}>
-                <input
-                  ref={inputRef}
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleSend()}
-                  placeholder={`Respond to ${activePerson.name}...`}
-                  style={{ flex: 1, padding: "10px 14px", border: `1px solid ${theme.accent}30`, background: "#050505", color: "#fff", fontSize: 13, outline: "none", fontFamily: "inherit" }}
-                />
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleSend}
-                  disabled={loading || !input.trim()}
-                  style={{ padding: "10px 20px", border: "none", background: theme.accent, color: "#000", cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: "inherit" }}
-                >
-                  SEND
-                </motion.button>
-              </div>
-            </>
-          )}
-
-          {activeTab === "code" && (
-            <div style={{ flex: 1, padding: 0 }}>
-              <Editor
-                height="100%"
-                theme="vs-dark"
-                language={domain === "data" ? "sql" : "javascript"}
-                value={codeContent}
-                onChange={(value) => setCodeContent(value || "")}
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 13,
-                  fontFamily: "'JetBrains Mono', monospace",
-                  lineNumbers: "on",
-                  scrollBeyondLastLine: false,
-                  wordWrap: "on",
-                  padding: { top: 16 }
-                }}
-              />
-            </div>
-          )}
-
-          {activeTab === "terminal" && (
-            <div style={{ flex: 1, padding: 16, fontSize: 12, color: "#666", lineHeight: 1.8, overflowY: "auto", background: "#020202", display: "flex", flexDirection: "column" }}>
-              <div style={{ flex: 1 }}>
-                {terminalOutput.map((line, i) => (
-                  <div key={i} style={{ color: line.includes("FAIL") || line.includes("ERROR") ? "#ef4444" : line.includes("PASS") || line.includes("ACTIVE") ? "#00ff41" : line.includes("VICTORY") ? theme.accent : line.startsWith("$") ? theme.accent : "#555" }}>
-                    {line || "\u00A0"}
-                  </div>
-                ))}
-              </div>
-              <div style={{ display: "flex", alignItems: "center", color: theme.accent, marginTop: 8 }}>
-                <span style={{ marginRight: 8 }}>$</span>
-                <input 
-                  value={terminalInput}
-                  onChange={e => setTerminalInput(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleTerminalCommand()}
-                  autoFocus
-                  style={{ 
-                    flex: 1, 
-                    background: "transparent", 
-                    border: "none", 
-                    outline: "none", 
-                    color: "#fff", 
-                    fontFamily: "inherit", 
-                    fontSize: 12 
-                  }} 
-                />
-              </div>
-            </div>
-          )}
-        </div>
+      {/* Hidden Persistent Voice Agent Container (Gemini Live WebSocket) */}
+      <div style={{ display: "none" }}>
+        <VoiceSession
+          ref={voiceSessionRef}
+          mode={voiceMode}
+          sessionId={sessionId}
+          personaName={activePerson.name}
+          personaRole={activePerson.role}
+          problemTitle={problemTitle}
+          scenarioDesc={scenarioDesc}
+          onUserTurn={handleVoiceUserTurn}
+          onAnalyserNodeReady={setAnalyserNode}
+        />
       </div>
-
-      {/* RIGHT PANEL */}
-      <div style={{ display: "flex", flexDirection: "column", background: "#050505" }}>
-
-        {/* 3D Avatar */}
-        <div style={{ flex: 1, position: "relative", minHeight: 0 }}>
-          <AvatarScene analyserNode={analyserNode} domain={domain} onInteract={handleInteract} />
-          
-          {/* Voice Session Live Agent Controls */}
-          {voiceMode !== "off" && (
-            <div style={{ position: "absolute", top: 12, left: 12, right: 12, zIndex: 10 }}>
-              <VoiceSession
-                ref={voiceSessionRef}
-                mode={voiceMode}
-                domain={domain}
-                personaName={activePerson.name}
-                scenario={scenarioDesc}
-                problemTitle={problemTitle}
-                showAvatar={false}
-                compact={true}
-                autoConnect={true}
-                onAnalyserReady={(node) => setAnalyserNode(node)}
-                onUserTurn={(text) => handleVoiceUserTurn(text)}
-                onCoachEvent={(event, detail) => {
-                  setCoachLogs(prev => [...prev, { id: Math.random().toString(36).substring(2, 9), event, detail, timestamp: Date.now() }]);
-                }}
-              />
-            </div>
-          )}
-
-          {/* Coach Logs / Hints Drawer */}
-          {showCoachLogs && (
-            <div
-              style={{
-                position: "absolute",
-                top: voiceMode !== "off" ? 70 : 12,
-                left: 12,
-                right: 12,
-                maxHeight: 220,
-                overflowY: "auto",
-                background: "rgba(5, 5, 10, 0.95)",
-                border: "1px solid #38bdf8",
-                borderRadius: 8,
-                padding: 12,
-                zIndex: 15,
-                boxShadow: "0 8px 24px rgba(0,0,0,0.8)",
-                fontSize: 11,
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, borderBottom: "1px solid rgba(56,189,248,0.2)", paddingBottom: 4 }}>
-                <span style={{ color: "#38bdf8", fontWeight: 700 }}>◈ AI GUIDE // COACHING LOG</span>
-                <button
-                  onClick={() => setShowCoachLogs(false)}
-                  style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 13 }}
-                >
-                  ✕
-                </button>
-              </div>
-              {coachLogs.length === 0 ? (
-                <div style={{ color: "#666", fontStyle: "italic" }}>No coaching interventions logged yet. The Guide intervenes if you are stuck or need guidance.</div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {coachLogs.map((log) => (
-                    <div key={log.id} style={{ padding: "6px 8px", background: "rgba(56,189,248,0.06)", borderLeft: "2px solid #38bdf8" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", color: "#38bdf8", fontWeight: 700, fontSize: 10, textTransform: "uppercase" }}>
-                        <span>{log.event}</span>
-                        <span style={{ color: "#666" }}>{new Date(log.timestamp).toLocaleTimeString()}</span>
-                      </div>
-                      <div style={{ color: "#e2e8f0", marginTop: 2, lineHeight: 1.4 }}>{log.detail}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Persona badge overlay */}
-          <div style={{ position: "absolute", bottom: 12, left: 12, right: 12, padding: "8px 12px", background: "rgba(0,0,0,0.8)", border: `1px solid ${theme.accent}30` }}>
-            <div style={{ fontSize: 10, color: theme.accent, fontWeight: 700, textTransform: "uppercase" }}>{activePerson.name}</div>
-            <div style={{ fontSize: 10, color: "#666" }}>{activePerson.role}</div>
-          </div>
-        </div>
-
-        {/* Observer Panel */}
-        <div style={{ padding: 16, borderTop: `1px solid ${theme.accent}20`, background: "#020202" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: theme.accent, textTransform: "uppercase", letterSpacing: "2px", marginBottom: 10 }}>◈ OBSERVER — PROCESS SIGNALS</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-            {[
-              { label: "Cognitive Load", value: `${cognitiveLoad}%`, color: cogColor },
-              { label: "Turns", value: `${turns}/10`, color: theme.accent },
-              { label: "Escalation", value: `${activePerson.escalation}/3`, color: escalationColor },
-              { label: "Clarity", value: `${dimensions.communication || 50}`, color: (dimensions.communication || 50) > 70 ? "#22c55e" : "#f59e0b" },
-              { label: "Approach", value: `${dimensions.approachQuality || 50}`, color: (dimensions.approachQuality || 50) > 70 ? "#22c55e" : "#f59e0b" },
-              { label: "Efficiency", value: `${dimensions.efficiency || 50}`, color: (dimensions.efficiency || 50) > 70 ? "#22c55e" : "#f59e0b" },
-            ].map(signal => (
-              <div key={signal.label} style={{ padding: "6px 8px", background: "#0a0a0a", border: "1px solid #1a1a1a" }}>
-                <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase" }}>{signal.label}</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: signal.color }}>{signal.value}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <style>{`
-        @keyframes blink { 50% { opacity: 0; } }
-      `}</style>
     </div>
   );
 }
 
 export default function SimulationPage() {
   return (
-    <Suspense fallback={<div style={{ background: "#020202", height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#00ff41", fontFamily: "'JetBrains Mono', monospace" }}>[ INITIALIZING_SIMULATION ]</div>}>
+    <Suspense
+      fallback={
+        <div style={{ height: "100vh", width: "100vw", background: "#020307", display: "flex", alignItems: "center", justifyContent: "center", color: "#00ff41", fontFamily: "'JetBrains Mono', monospace" }}>
+          [ INITIALIZING_AURA_CLUSTER... ]
+        </div>
+      }
+    >
       <SimulationContent />
     </Suspense>
   );

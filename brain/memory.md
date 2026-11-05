@@ -22,3 +22,17 @@
   - Resolved background noise and self-interruption loop by adding RMS energy Voice Activity Detection (VAD) noise gate, acoustic feedback suppression during model speech, and 350ms speech hangover.
   - Implemented 1-way proactive spoken responses using `sendClientContent` for terminal commands and idle nudges, alongside conversational 2-way dialogue.
   - Successfully deployed and verified live on `https://praxis-iota-puce.vercel.app/`.
+- **2026-11-05 (Hackathon Immersion & Domain Environments Rework)**:
+  - Resolved Minified React Error #310: restructured `simulation/[sessionId]/page.tsx` hook order so all `useCallback`, `useEffect`, `useState`, and `useRef` calls execute unconditionally before any early returns.
+  - Resolved Voice Agent silence by ensuring persistent `<VoiceSession>` mounting and audio stream resumption on user interaction.
+  - Aligned `/select-domain` and `/seeker/dashboard` with 7 dedicated workplace domains set in the unified universe of **Aura Commerce** facing a Black Friday checkout concurrency crisis.
+  - Authored 7 distinct, highly polished workplace environments under `apps/web/components/Environments/`:
+    1. `TerminalEnvironment.tsx` (Engineering): live SSH Linux terminal with `ls`, `cat`, `git log`, `npm test` (red -> green), and idempotency concurrency fix.
+    2. `SalesCallEnvironment.tsx` (Sales - Demo Star): softphone console with prospect brief, live waveform/timer, Gemini Live real-time audio + transcript, notes scratchpad, checkable milestones, calendar meeting booking win, and text-chat fallback.
+    3. `InboxEnvironment.tsx` (Product): executive email client with 4 incoming stakeholder emails, Sev-1 checkout bug triage, and incident protocol publisher.
+    4. `DataWorkspaceEnvironment.tsx` (Data): schema browser, SQL editor, and live animated SVG line chart that corrects an anomalous +40% DAU spike when `DISTINCT` is added.
+    5. `WarRoomEnvironment.tsx` (SRE): dark war room with Sev-1 pulsing banner, dual live charts (error rate vs conversion), team chat with Alex Chen, and 1-click rollback to v2.4.0 that recovers metrics over 30s.
+    6. `HelpdeskEnvironment.tsx` (Customer Support): ticket queue with ticking SLA counters, customer profiles, communication tone selector, and 1-click batch escalation to SRE.
+    7. `SocialCommandEnvironment.tsx` (Brand / Crisis): live mentions feed, brand voice guidelines, crisis response publisher, and real-time sentiment dial that swings to 86% Positive.
+  - Added floating `DemoPitchGuide.tsx` cheat-sheet with 3-minute pitch instructions and 1-click walkthrough quick-solves for judges.
+  - Verified 100% clean Next.js 16.2.6 Turbopack production build and 27/27 passing unit & adversarial stress tests.

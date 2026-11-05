@@ -95,6 +95,9 @@ export async function startSimulationAction(
     sales: `Hi, thanks for taking this call. I'm ${persona.name}, ${persona.role}. Look, I'll be direct — ${problem.scenario.substring(0, 150)}. How do you propose we handle this?`,
     product: `Thanks for joining this meeting, I'm ${persona.name}, ${persona.role}. We need to discuss something urgent — ${problem.scenario.substring(0, 150)}. What's your recommendation?`,
     data: `Hey, glad you're looking at this. I'm ${persona.name}, ${persona.role}. We're in trouble — ${problem.scenario.substring(0, 150)}. Walk me through your approach.`,
+    sre: `War room assembled. I'm ${persona.name}, ${persona.role}. Error rates exploded to 42% after the latest deploy. What is your rollback action?`,
+    support: `Support queue update: I'm ${persona.name}, ${persona.role}. Three urgent tickets report double debits on checkout. We need a unified resolution.`,
+    brand: `Crisis command online: I'm ${persona.name}, ${persona.role}. A scheduled marketing tweet went viral beside customer checkout complaints. What's our public statement?`,
   };
 
   const initialState = {

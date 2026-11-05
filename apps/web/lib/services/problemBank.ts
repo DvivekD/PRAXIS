@@ -1,5 +1,4 @@
-// Problem Bank — Rich, domain-specific scenarios for 4 domains
-// Each problem has setup code (for IDE skins) or agent prompts (for roleplay skins)
+// Problem Bank — Domain-specific scenarios for 7 domains set in Aura Commerce (Black Friday)
 
 export interface GeneratedProblem {
   domain: string;
@@ -9,180 +8,112 @@ export interface GeneratedProblem {
   mutationSeed: number;
   setupCode?: string;
   agentPrompt?: string;
-  skinType: "ide" | "roleplay" | "inbox";
+  skinType: "ide" | "roleplay" | "inbox" | "call" | "warroom" | "helpdesk" | "social";
   title: string;
 }
 
 const ENGINEERING_PROBLEMS = [
   {
-    title: "Rate Limiter Bypass",
-    baseScenario: "Your company's API rate limiter is allowing 3x expected traffic during burst periods. The token bucket implementation has a critical flaw in how it handles concurrent requests across distributed nodes. Debug and fix the implementation.",
+    title: "Checkout Double-Charge Race Condition",
+    baseScenario: "Black Friday checkout is double-charging shoppers when users rapidly double-click 'Complete Order'. Concurrency guard in checkout.ts is evaluated after the external payment gateway charge. Fix the race condition so checkout execution is atomic and strictly idempotent.",
     variables: {
-      storageBackend: ["Redis Cluster", "Memcached", "In-memory LRU with gossip sync"],
-      algorithm: ["Token Bucket", "Sliding Window Log", "Fixed Window Counter"],
-      trafficPattern: ["bursty IoT devices", "sustained enterprise API calls", "spiky with bot traffic"],
+      concurrencyEngine: ["In-memory atomic flag", "Redis distributed mutex", "Postgres row lock"],
+      paymentGateway: ["Stripe Elements", "Adyen Direct", "Aura Internal Gateway"],
     },
-    setupCode: `// rate-limiter.ts — BUGGY IMPLEMENTATION
-import { Redis } from 'ioredis';
+    setupCode: `// /var/www/aura-commerce/src/checkout.ts
+import { paymentGateway } from './services/gateway';
+import { orderStore } from './db/orders';
 
-interface RateLimiterConfig {
-  windowMs: number;
-  maxRequests: number;
-}
+export async function processPayment(orderId: string, amount: number): Promise<boolean> {
+  const order = await orderStore.find(orderId);
+  if (!order) throw new Error("Order not found");
 
-export class TokenBucketLimiter {
-  private redis: Redis;
-  private config: RateLimiterConfig;
+  // BUG: Payment gateway charged BEFORE idempotency flag is verified & committed
+  const chargeSuccess = await paymentGateway.charge(order.customerId, amount);
 
-  constructor(redis: Redis, config: RateLimiterConfig) {
-    this.redis = redis;
-    this.config = config;
+  if (order.status === "PAID") {
+    console.warn("[CHECKOUT] Duplicate execution detected after charge!");
+    return false;
   }
 
-  async isAllowed(key: string): Promise<boolean> {
-    // BUG: Race condition — INCR and EXPIRE are not atomic
-    // Multiple concurrent requests can slip through before the window is set
-    const current = await this.redis.incr(key);
-    if (current === 1) {
-      await this.redis.expire(key, this.config.windowMs / 1000);
-    }
-    return current <= this.config.maxRequests;
-  }
-
-  // BUG: No distributed locking — each node maintains independent counts
-  // BUG: No burst handling — a client can exhaust the entire window instantly
-}
-
-// Expected fix: Use Lua scripting for atomic operations, implement sliding window
-`,
-  },
-  {
-    title: "Memory Leak in Data Pipeline",
-    baseScenario: "Your data ingestion pipeline is leaking memory, causing OOM kills every 4-6 hours in production. The pipeline processes streaming events and maintains an in-memory buffer for batch writes.",
-    variables: {
-      dataSource: ["Kafka consumer group", "WebSocket stream", "gRPC bidirectional stream"],
-      batchSize: ["1000 events", "10000 events", "100000 events"],
-      runtime: ["Node.js 20", "Bun", "Deno"],
-    },
-    setupCode: `// pipeline.ts — LEAKING IMPLEMENTATION
-interface Event {
-  id: string;
-  payload: Record<string, any>;
-  timestamp: number;
-}
-
-class DataPipeline {
-  private buffer: Event[] = [];
-  private listeners: Map<string, Function[]> = new Map();
-  private processedIds: Set<string> = new Set(); // BUG: Never cleared
-
-  async processEvent(event: Event) {
-    // BUG: processedIds grows unboundedly — classic memory leak
-    if (this.processedIds.has(event.id)) return;
-    this.processedIds.add(event.id);
-
-    this.buffer.push(event);
-
-    // BUG: Closure captures 'event' reference, preventing GC
-    this.on('flush', () => {
-      console.log(\`Flushed including event \${event.id}\`);
-    });
-
-    if (this.buffer.length >= 1000) {
-      await this.flush();
-    }
-  }
-
-  private on(event: string, callback: Function) {
-    // BUG: Listeners are added but never removed
-    const list = this.listeners.get(event) || [];
-    list.push(callback);
-    this.listeners.set(event, list);
-  }
-
-  private async flush() {
-    const batch = this.buffer.splice(0, this.buffer.length);
-    // ... write to database
-    this.emit('flush');
-  }
-
-  private emit(event: string) {
-    const list = this.listeners.get(event) || [];
-    list.forEach(fn => fn());
-  }
-}
-`,
+  await orderStore.update(orderId, { status: "PAID", chargedAt: Date.now() });
+  return chargeSuccess;
+}`,
   },
 ];
 
 const SALES_PROBLEMS = [
   {
-    title: "Enterprise Contract Negotiation",
-    baseScenario: "You're negotiating a $4M ARR enterprise contract renewal. The customer is threatening to churn due to a recent 15% price increase. You need to retain them without setting a dangerous discount precedent.",
+    title: "Nordic Goods Enterprise Contract Renewal",
+    baseScenario: "Sam Jenkins (VP Retail at Nordic Goods) is threatening to churn their $250k enterprise contract ahead of Black Friday due to reports of checkout glitches. Uncover their underlying reliability fears, present Aura's 99.99% core SLA & atomic rollback containment, and book a technical lock-in meeting.",
     variables: {
-      customerType: ["Fortune 500 bank", "Series C startup", "Government agency"],
-      painPoint: ["price increase", "missing compliance feature", "poor support SLA"],
-      competitorThreat: ["AWS competitor offering 30% less", "Open-source alternative gaining traction", "Industry-specific competitor with better integrations"],
+      contractValue: ["$250,000 ARR", "$400,000 ARR", "$180,000 ARR"],
+      riskFactor: ["Black Friday flash sale downtime", "Data residency compliance", "Multi-region failover"],
     },
-    agentPrompt: "You are in a high-stakes enterprise contract negotiation. The customer is frustrated and considering alternatives. You must balance retention with profitability. Find creative solutions beyond pure discounting.",
-  },
-  {
-    title: "Cold Outbound to CTO",
-    baseScenario: "You're doing cold outreach to the CTO of a mid-market SaaS company. They've publicly tweeted frustration about their current DevOps tooling. Your product is a direct solution, but they've never heard of your company.",
-    variables: {
-      industry: ["FinTech", "HealthTech", "EdTech"],
-      companySize: ["200 employees", "500 employees", "1000 employees"],
-      currentTool: ["Jenkins", "CircleCI", "GitHub Actions"],
-    },
-    agentPrompt: "You are cold-calling a busy CTO who has 5 minutes. Your goal is to get a 30-minute demo booked. The CTO is skeptical of vendors but open to solutions for real pain points.",
+    agentPrompt: "You are Sam Jenkins, VP Retail at Nordic Goods. You have a $250k trial contract with Aura Commerce. You saw reports of checkout glitches and are hesitant to renew right before Black Friday. If the candidate asks probing questions about your fears and presents atomic SLA guarantees, agree to book a 15-minute technical lock-in meeting tomorrow.",
   },
 ];
 
 const PRODUCT_PROBLEMS = [
   {
-    title: "Pricing Model Pivot",
-    baseScenario: "The board wants to pivot from per-seat pricing to usage-based pricing. Your largest customer (40% of revenue) is on an all-you-can-eat plan and will be severely impacted. You need to build a migration strategy that doesn't cause mass churn.",
+    title: "Black Friday Triage & Stakeholder Prioritization",
+    baseScenario: "Conflicting urgent requests land in your executive inbox at T-minus 6 hours to Black Friday. Prioritize resolving the customer-facing payment bug, gently push back on the CEO's last-minute gift cards, pause the promotional email blast, and publish the incident protocol.",
     variables: {
-      currentModel: ["per-seat", "flat-rate", "tiered"],
-      targetModel: ["usage-based", "hybrid", "outcome-based"],
-      topCustomerReaction: ["threatening to leave", "open to discussion", "demanding grandfathering"],
+      stakeholderPressure: ["Board deadline", "Marketing campaign countdown", "VIP merchant churn threat"],
     },
-    agentPrompt: "You are mediating between the CEO (wants aggressive pivot), Head of Engineering (worried about implementation cost), and the biggest customer (worried about pricing shock). Find a path that satisfies all three.",
+    agentPrompt: "You are Taylor Brooks, CEO of Aura Commerce. You want to push the gift card feature to bump AOV by 15%, but engineering is grappling with an active checkout bug. Value candidate who prioritizes stability and communicates clearly.",
   },
 ];
 
 const DATA_PROBLEMS = [
   {
-    title: "ETL Pipeline Optimization",
-    baseScenario: "Your ETL pipeline's latency has increased 400% over the past quarter. The business team needs fresh data for the quarterly board report by Monday. The root cause appears to be a schema migration that wasn't properly backfilled.",
+    title: "Black Friday DAU Metric Anomaly",
+    baseScenario: "The analytics dashboard reports a 40% surge in Daily Active Shoppers ahead of Black Friday. However, a cart-to-transaction JOIN without DISTINCT is multiplying visits. Correct the SQL query to calculate unique active shoppers.",
     variables: {
-      dataVolume: ["50M rows/day", "500M rows/day", "5B rows/day"],
-      stack: ["Spark on Databricks", "dbt + Snowflake", "Custom Python + PostgreSQL"],
-      urgency: ["board report Monday", "regulatory audit next week", "customer data request SLA"],
+      varianceDelta: ["+40% spike", "+65% spike", "+32% spike"],
     },
-    setupCode: `-- etl_pipeline.sql — SLOW QUERY
--- This query takes 45 minutes. Target: under 5 minutes.
-
--- BUG 1: Full table scan due to missing index on created_at
--- BUG 2: Cartesian join from missing join condition
--- BUG 3: No partition pruning — scanning all historical data
-
-SELECT
-  u.user_id,
-  u.email,
-  e.event_type,
-  e.event_data,
-  p.product_name,
-  SUM(e.revenue) as total_revenue
+    setupCode: `-- Aura Commerce — Daily Active Shopper Metric
+SELECT 
+  DATE(t.created_at) AS report_date,
+  COUNT(u.id) AS active_shoppers
 FROM users u
-  JOIN events e ON u.user_id = e.user_id  -- Missing: AND e.created_at >= '2024-01-01'
-  JOIN products p ON 1=1  -- BUG: Cartesian join, should be p.product_id = e.product_id
-WHERE u.status = 'active'
-GROUP BY u.user_id, u.email, e.event_type, e.event_data, p.product_name
--- Missing: HAVING and ORDER BY for useful output
--- Missing: Materialized view or incremental processing strategy
-;
-`,
+JOIN transactions t ON u.id = t.user_id
+WHERE t.created_at >= '2026-11-01'
+GROUP BY DATE(t.created_at)
+ORDER BY report_date ASC;`,
+  },
+];
+
+const SRE_PROBLEMS = [
+  {
+    title: "Sev-1 Checkout API Production Outage",
+    baseScenario: "Production alert: 5xx error rate skyrocketed to 42% following deployment v2.4.1-hotfix. Checkout conversion has plummeted to 12%. Analyze system telemetry, update the public status page, and execute a zero-downtime rollback to v2.4.0.",
+    variables: {
+      trafficVolume: ["45,000 req/sec", "80,000 req/sec"],
+    },
+    agentPrompt: "You are Alex Chen, Lead SRE at Aura Commerce. Production checkout is failing after v2.4.1-hotfix. Assist the incident commander in executing a clean rollback to v2.4.0.",
+  },
+];
+
+const SUPPORT_PROBLEMS = [
+  {
+    title: "Black Friday Payment Incident Ticket Queue",
+    baseScenario: "Three urgent customer tickets have arrived within 10 minutes reporting duplicate card debits under rapid repeat clicks. Identify the systemic root cause, select an empathetic tone, and execute a unified batch escalation to SRE rather than fragmented manual refunds.",
+    variables: {
+      affectedCustomers: ["Elena Rostova, David Kim, Sarah Miller"],
+    },
+    agentPrompt: "You are Jordan Mitchell, Customer Support Lead. Help the agent recognize that individual refunds do not solve the systemic checkout bug.",
+  },
+];
+
+const BRAND_PROBLEMS = [
+  {
+    title: "Viral Checkout Glitch Crisis Control",
+    baseScenario: "A scheduled promotional tweet ('Ready to splurge this Black Friday?') went live just as checkout began glitching, sparking a viral PR crisis with 2,400+ angry quote-tweets. Draft an authentic, accountable response aligned with brand guidelines to restore community trust.",
+    variables: {
+      viralReach: ["2,400 retweets, 8,900 quote-tweets"],
+    },
+    agentPrompt: "You are Maya Lin, Head of Brand Communications. Evaluate candidate's PR response for accountability, transparency, and empathy.",
   },
 ];
 
@@ -195,27 +126,17 @@ export class ProblemBank {
       sales: SALES_PROBLEMS,
       product: PRODUCT_PROBLEMS,
       data: DATA_PROBLEMS,
+      sre: SRE_PROBLEMS,
+      support: SUPPORT_PROBLEMS,
+      brand: BRAND_PROBLEMS,
     };
   }
 
   public generateMutatedProblem(domain: string, segment: string): GeneratedProblem {
-    const domainProblems = this.problems[domain];
-    if (!domainProblems || domainProblems.length === 0) {
-      return {
-        domain,
-        title: "General Stakeholder Crisis",
-        scenario: "Resolve the ongoing stakeholder crisis using your domain expertise.",
-        difficulty: segment,
-        contextVariables: {},
-        mutationSeed: Math.floor(Math.random() * 9000) + 1000,
-        skinType: "roleplay",
-      };
-    }
-
-    // Pick a random problem from the domain
+    const domainKey = domain.toLowerCase();
+    const domainProblems = this.problems[domainKey] || this.problems.engineering;
     const base = domainProblems[Math.floor(Math.random() * domainProblems.length)];
 
-    // Mutate context variables and build dynamic scenario string
     const selectedVars: Record<string, string> = {};
     let dynamicScenario = base.baseScenario;
     if (base.variables) {
@@ -226,16 +147,19 @@ export class ProblemBank {
         selectedVars[varName] = choice;
         parts.push(`${varName}: ${choice}`);
       }
-      dynamicScenario += ` [Context variables applied: ${parts.join(", ")}]`;
+      dynamicScenario += ` [Context applied: ${parts.join(", ")}]`;
     }
 
-    // Determine skin type
-    let skinType: "ide" | "roleplay" | "inbox" = "roleplay";
-    if ("setupCode" in base && base.setupCode) skinType = "ide";
-    if (domain === "product") skinType = "inbox";
+    let skinType: "ide" | "roleplay" | "inbox" | "call" | "warroom" | "helpdesk" | "social" = "ide";
+    if (domainKey === "sales") skinType = "call";
+    else if (domainKey === "product") skinType = "inbox";
+    else if (domainKey === "sre") skinType = "warroom";
+    else if (domainKey === "support") skinType = "helpdesk";
+    else if (domainKey === "brand") skinType = "social";
+    else if (domainKey === "data") skinType = "ide";
 
     return {
-      domain,
+      domain: domainKey,
       title: base.title,
       scenario: dynamicScenario,
       contextVariables: selectedVars,

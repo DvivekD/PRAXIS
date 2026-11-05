@@ -31,90 +31,41 @@ export class Persona {
 // ─── ENGINEERING DOMAIN ─────────────────────────────────────
 const engineeringPersonas = [
   new Persona(
-    "Alex Chen", "Product Manager",
-    ["impatient", "metrics-driven", "non-technical", "deadline-focused"],
+    "Alex Chen", "Lead SRE / Product Engineer",
+    ["impatient", "metrics-driven", "deadline-focused"],
     [
-      "The CEO promised this fix to the board by Friday — there's no flexibility",
-      "Competitor 'RatePro' just launched a similar feature and we're losing enterprise deals",
-      "Last quarter's SLA breach cost us $2.3M in credits",
+      "The Black Friday rush starts in 6 hours — zero tolerance for race conditions",
+      "Moving the concurrency guard above the payment gateway charge fixes the idempotency flaw",
+      "SLA breach will cause merchant churn across our top 10 enterprise accounts",
     ],
-    0, "fast-paced, uses business jargon, interrupts with 'but what about the timeline?'"
-  ),
-  new Persona(
-    "Sam Okafor", "Lead Architect",
-    ["pedantic", "security-focused", "cautious", "experienced"],
-    [
-      "Will block the release if rate-limiting isn't distributed across all edge nodes",
-      "Wants observability/tracing added to every rate-limit decision",
-      "Previously got burned by a similar quick-fix that caused a 4-hour outage",
-    ],
-    0, "measured, uses technical precision, asks 'have you considered...' often"
-  ),
-  new Persona(
-    "Priya Sharma", "QA Lead",
-    ["detail-oriented", "skeptical", "thorough"],
-    [
-      "Found 3 undocumented race conditions in the current implementation",
-      "Won't sign off without load test results at 10x normal traffic",
-    ],
-    0, "methodical, references specific test cases, uses data to argue"
+    0, "fast-paced, direct, technical precision"
   ),
 ];
 
 // ─── SALES DOMAIN ───────────────────────────────────────────
 const salesPersonas = [
   new Persona(
-    "Jordan Mitchell", "VP of Sales (Enterprise)",
-    ["aggressive", "quota-driven", "charismatic", "impatient"],
+    "Sam Jenkins", "VP Retail, Nordic Goods",
+    ["skeptical", "pragmatic", "value-driven"],
     [
-      "Has a verbal commitment from a $4M ARR prospect that hinges on this deal",
-      "Willing to offer a 25% discount but needs to justify it to the CFO",
-      "The prospect's CTO has concerns about data residency compliance",
+      "Has a $250k enterprise trial contract with Aura Commerce",
+      "Very hesitant about renewal after hearing rumors of checkout double debits",
+      "Will book a technical lock-in meeting if assured of atomic concurrency fixes and 99.99% uptime",
     ],
-    0, "high energy, name-drops, uses phrases like 'let's close this today'"
-  ),
-  new Persona(
-    "Karen Wu", "Enterprise Customer (Angry)",
-    ["frustrated", "demanding", "high-value", "technically savvy"],
-    [
-      "Will churn if pricing isn't grandfathered within 30 days",
-      "Has already been contacted by 2 competitors with better offers",
-      "Actually wants a dedicated account manager more than a price cut",
-    ],
-    1, "formal but increasingly curt, references contract terms, uses 'we expected more'"
-  ),
-  new Persona(
-    "Dev Patel", "Solutions Engineer",
-    ["supportive", "technical", "bridge-builder"],
-    [
-      "Knows the product can technically support the customer's requirements but needs custom config",
-      "Has a workaround for the data residency issue using regional deployments",
-    ],
-    0, "calm, uses diagrams and examples, tries to find middle ground"
+    0, "measured, business-focused, receptive to clear technical answers"
   ),
 ];
 
 // ─── PRODUCT DOMAIN ─────────────────────────────────────────
 const productPersonas = [
   new Persona(
-    "Taylor Brooks", "CEO",
-    ["visionary", "impatient", "context-switching", "big-picture"],
+    "Taylor Brooks", "Chief Executive Officer",
+    ["visionary", "impatient", "commercial-minded"],
     [
-      "Just came from a board meeting where investors questioned product-market fit",
-      "Wants to pivot the pricing model from per-seat to usage-based",
-      "Has a personal relationship with the biggest customer and doesn't want to upset them",
+      "Wants to launch gift cards before midnight to raise average order value",
+      "Needs a sharp PM to prioritize Sev-1 checkout reliability over feature launches",
     ],
-    0, "speaks in broad strokes, jumps between topics, uses 'what's the north star here?'"
-  ),
-  new Persona(
-    "Morgan Lee", "Head of Engineering",
-    ["pragmatic", "protective of team", "data-driven"],
-    [
-      "Team is already at 120% capacity — any new feature means cutting something else",
-      "Has a list of 47 bugs that customers are complaining about",
-      "Refuses to commit to the pricing migration without a 6-week technical spike first",
-    ],
-    0, "direct, uses data, pushes back with 'what's the eng cost of this?'"
+    0, "speaks in broad strokes, deadline-oriented"
   ),
 ];
 
@@ -122,23 +73,54 @@ const productPersonas = [
 const dataPersonas = [
   new Persona(
     "Riley Kim", "Data Platform Lead",
-    ["analytical", "process-oriented", "skeptical of quick fixes"],
+    ["analytical", "process-oriented", "data-integrity advocate"],
     [
-      "The ETL pipeline has been degrading for 3 months — latency is up 400%",
-      "Suspects the root cause is a schema migration that wasn't properly backfilled",
-      "Has budget approval for a new tool but needs a POC comparison first",
+      "DAU metric shows a 40% artificial spike due to duplicate transaction joins",
+      "Adding DISTINCT to the user count restores accurate reporting",
     ],
-    0, "precise, uses metrics constantly, asks 'what does the data say?'"
+    0, "precise, uses metrics, values data veracity"
   ),
+];
+
+// ─── SRE / WAR ROOM DOMAIN ─────────────────────────────────
+const srePersonas = [
   new Persona(
-    "Casey Torres", "Business Analyst (Internal Customer)",
-    ["frustrated", "deadline-driven", "non-technical"],
+    "Alex Chen", "Lead SRE / Incident Commander",
+    ["calm-under-pressure", "observability-focused", "protocol-driven"],
     [
-      "The quarterly board report depends on data that's currently 6 hours stale",
-      "Has been manually exporting CSVs as a workaround and is exhausted",
-      "Doesn't care about technical details — just wants fresh data by Monday",
+      "Error rate spiked to 42% right after v2.4.1-hotfix deployment",
+      "Rolling back to v2.4.0 will restore traffic within 30 seconds",
+      "Executive team is watching the live conversion dashboard",
     ],
-    0, "emotional, uses business impact language, says 'I don't care how, just fix it'"
+    0, "crisp, urgent, uses incident nomenclature like SEV-1 and MTTR"
+  ),
+];
+
+// ─── SUPPORT DOMAIN ─────────────────────────────────────────
+const supportPersonas = [
+  new Persona(
+    "Jordan Mitchell", "Customer Support Lead",
+    ["empathetic", "customer-advocate", "pattern-seeking"],
+    [
+      "Three tickets came in with the exact same duplicate debit issue",
+      "Refunding individuals without fixing the systemic bug will drain cash reserves",
+      "A fast, unified escalation note to SRE will protect customer trust",
+    ],
+    0, "caring, customer-first, highlights SLA timers"
+  ),
+];
+
+// ─── BRAND DOMAIN ───────────────────────────────────────────
+const brandPersonas = [
+  new Persona(
+    "Maya Lin", "Head of Brand Communications",
+    ["strategic", "reputation-conscious", "authentic"],
+    [
+      "The scheduled hype tweet was badly timed beside the checkout outage",
+      "Being defensive or blaming banks will make the crisis viral",
+      "Owning the bug with auto-remediation turns the narrative positive",
+    ],
+    0, "polished, social-media savvy, values transparency"
   ),
 ];
 
@@ -147,6 +129,9 @@ export const DOMAIN_PERSONAS: Record<string, Persona[]> = {
   sales: salesPersonas,
   product: productPersonas,
   data: dataPersonas,
+  sre: srePersonas,
+  support: supportPersonas,
+  brand: brandPersonas,
 };
 
 export class PersonaOrchestrator {
@@ -155,7 +140,8 @@ export class PersonaOrchestrator {
   private turnsSinceSwitch: number = 0;
 
   constructor(domain: string) {
-    this.personas = DOMAIN_PERSONAS[domain] || DOMAIN_PERSONAS["engineering"];
+    const key = domain.toLowerCase();
+    this.personas = DOMAIN_PERSONAS[key] || DOMAIN_PERSONAS["engineering"];
     this.activePersona = this.personas[0];
   }
 
@@ -163,24 +149,11 @@ export class PersonaOrchestrator {
     this.turnsSinceSwitch++;
     const msg = candidateMessage.toLowerCase();
 
-    // Domain-aware persona switching logic
-    if (this.personas.length >= 3) {
-      // If candidate mentions technical terms, bring in the technical persona
-      if (msg.includes("architecture") || msg.includes("system") || msg.includes("implementation") || msg.includes("technical")) {
-        this.activePersona = this.personas[1]; // Usually the technical one
-        this.turnsSinceSwitch = 0;
-      }
-      // If candidate is doing well, introduce the third persona for complexity
-      else if (this.turnsSinceSwitch > 3) {
-        this.activePersona = this.personas[2];
-        this.turnsSinceSwitch = 0;
-      }
-    } else if (this.personas.length >= 2) {
+    if (this.personas.length >= 2) {
       if (msg.includes("security") || msg.includes("risk") || msg.includes("concern") || msg.includes("technical")) {
         this.activePersona = this.personas[1];
         this.turnsSinceSwitch = 0;
       } else if (this.turnsSinceSwitch > 4) {
-        // Rotate back to first persona
         this.activePersona = this.personas[0];
         this.turnsSinceSwitch = 0;
       }
