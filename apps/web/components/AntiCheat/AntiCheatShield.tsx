@@ -2,10 +2,20 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ProctoringHUD from "./ProctoringHUD";
 
 export interface IntegrityViolation {
   id: string;
-  type: "TAB_SWITCH" | "WINDOW_BLUR" | "PASTE_OVERFLOW" | "DEVTOOLS_OPEN";
+  type:
+    | "TAB_SWITCH"
+    | "WINDOW_BLUR"
+    | "PASTE_OVERFLOW"
+    | "DEVTOOLS_OPEN"
+    | "GAZE_DIVERSION_LAP"
+    | "GAZE_DIVERSION_OFFSCREEN"
+    | "MULTIPLE_FACES_DETECTED"
+    | "CANDIDATE_ABSENT"
+    | "PHONE_DETECTED";
   description: string;
   timestamp: string;
   durationSeconds?: number;
@@ -23,6 +33,7 @@ export default function AntiCheatShield({
   active = true,
 }: AntiCheatShieldProps) {
   const [strikes, setStrikes] = useState<number>(0);
+  const [integrityScore, setIntegrityScore] = useState<number>(98);
   const [violations, setViolations] = useState<IntegrityViolation[]>([]);
   const [activeModalViolation, setActiveModalViolation] = useState<IntegrityViolation | null>(null);
   const [blurStartTime, setBlurStartTime] = useState<number | null>(null);
@@ -33,6 +44,7 @@ export default function AntiCheatShield({
   // 1. Reset / Bypass Handler (for Demo purposes)
   const handleResetOrBypass = useCallback(() => {
     setStrikes(0);
+    setIntegrityScore(100);
     setActiveModalViolation(null);
     setBlurStartTime(null);
     setIsDemoBypassed(true);
@@ -436,6 +448,21 @@ export default function AntiCheatShield({
           </div>
         )}
       </AnimatePresence>
+
+      {/* 360° Dual-Camera Omnipresent Proctoring HUD */}
+      {active && (
+        <ProctoringHUD
+          sessionId={sessionId}
+          integrityScore={integrityScore}
+          onAnomalyDetected={(anomalyType, desc) => {
+            registerViolation(anomalyType as any, desc);
+            setIntegrityScore((prev) =>
+              Math.max(25, prev - (anomalyType.includes("MULTIPLE") ? 20 : 6))
+            );
+          }}
+          onBypassDemo={handleResetOrBypass}
+        />
+      )}
     </>
   );
 }
