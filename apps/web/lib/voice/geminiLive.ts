@@ -140,6 +140,8 @@ export class VoiceAgent {
   private micProcessorNode: ScriptProcessorNode | null = null;
   private silenceGainNode: GainNode | null = null;
   private isMicActive: boolean = false;
+  private isModelSpeaking: boolean = false;
+  private lastSpeechTime: number = 0;
 
   constructor(options: VoiceAgentOptions) {
     this.options = options;
@@ -422,6 +424,31 @@ export class VoiceAgent {
       }
 
       const inputChannelData = e.inputBuffer.getChannelData(0);
+
+      // Noise gate & Voice Activity Detection (RMS energy)
+      let sumSquares = 0;
+      for (let i = 0; i < inputChannelData.length; i++) {
+        sumSquares += inputChannelData[i] * inputChannelData[i];
+      }
+      const rms = Math.sqrt(sumSquares / inputChannelData.length);
+
+      // Acoustic echo / speaker feedback protection:
+      // While model is actively outputting audio, suppress acoustic bleed (rms < 0.045)
+      // unless user deliberately speaks loudly over the model.
+      if (this.isModelSpeaking) {
+        if (rms < 0.045) {
+          return;
+        }
+      } else {
+        // Model is silent: apply ambient noise gate (0.012) with 350ms speech hangover
+        if (rms >= 0.012) {
+          this.lastSpeechTime = Date.now();
+        } else if (Date.now() - this.lastSpeechTime > 350) {
+          // Ambient background room noise, avoid sending false audio
+          return;
+        }
+      }
+
       const resampled = resampleTo16k(inputChannelData, audioCtx.sampleRate, 16000);
       const pcmBuffer = floatTo16BitPCM(resampled);
       const base64Audio = arrayBufferToBase64(pcmBuffer);
@@ -511,6 +538,36 @@ export class VoiceAgent {
     }
     const formatted = text.startsWith("[CONTEXT]") ? text : `[CONTEXT] ${text}`;
     this.session.sendRealtimeInput({ text: formatted });
+  }
+
+  /**
+   * Sets whether the model is actively outputting audio through local speakers.
+   * Used for acoustic feedback suppression so speaker output does not falsely trigger barge-in.
+   */
+  public setModelSpeaking(speaking: boolean): void {
+    this.isModelSpeaking = speaking;
+  }
+
+  /**
+   * Prompts the model to speak a proactive turn in response to candidate actions or milestones.
+   */
+  public speakProactiveContext(prompt: string): void {
+    if (!this.session || this.status !== "connected") {
+      return;
+    }
+    try {
+      this.session.sendClientContent({
+        turns: [
+          {
+            role: "user",
+            parts: [{ text: prompt }],
+          },
+        ],
+        turnComplete: true,
+      });
+    } catch (err) {
+      console.warn("[VoiceAgent] speakProactiveContext failed:", err);
+    }
   }
 
   /**

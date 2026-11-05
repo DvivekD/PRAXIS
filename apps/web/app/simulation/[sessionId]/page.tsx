@@ -335,10 +335,14 @@ function SimulationContent() {
     setTerminalInput("");
     lastActivityTimeRef.current = Date.now();
 
-    if (voiceMode === "guide") {
-      const now = Date.now();
-      const elapsed = Math.round((now - simulationStartTimeRef.current) / 1000);
-      voiceSessionRef.current?.pushContext(`[CONTEXT] t+${elapsed}s: ran terminal command '${cmd}'`.slice(0, 195));
+    if (voiceMode !== "off") {
+      const reactionPrompt = cmd === "npm run debug"
+        ? "Candidate executed 'npm run debug' and detected a memory leak in the rate limiter. Speak a quick 1-sentence observation to guide their next move."
+        : cmd === "pm2 restart all"
+        ? "Candidate executed 'pm2 restart all' to apply the patch. Congratulate them on stabilizing production in 1 spoken sentence."
+        : `Candidate executed terminal command '$ ${cmd}'. Give a quick, natural 1-sentence spoken reaction or tip.`;
+
+      voiceSessionRef.current?.speakProactiveContext(reactionPrompt);
     }
     
     setTerminalOutput(prev => {
@@ -392,23 +396,23 @@ function SimulationContent() {
     }
   }, [codeContent, voiceMode]);
 
-  // 60s Inactivity nudge timer for Guide mode
+  // 45s Inactivity proactive nudge timer for voice mentor
   useEffect(() => {
-    if (voiceMode !== "guide") return;
+    if (voiceMode === "off") return;
 
     const interval = setInterval(() => {
       const now = Date.now();
       const idleMs = now - lastActivityTimeRef.current;
-      if (idleMs >= 60000 && now - lastIdlePushedTimeRef.current >= 60000) {
+      if (idleMs >= 45000 && now - lastIdlePushedTimeRef.current >= 45000) {
         lastIdlePushedTimeRef.current = now;
-        const elapsed = Math.round((now - simulationStartTimeRef.current) / 1000);
-        const idleContext = `[CONTEXT] t+${elapsed}s: candidate has been idle for ${Math.round(idleMs / 1000)}s without code edits or terminal commands`;
-        voiceSessionRef.current?.pushContext(idleContext.slice(0, 195));
+        voiceSessionRef.current?.speakProactiveContext(
+          `Candidate has been focused quietly for 45s on ${problemTitle || "the task"}. Speak a brief, encouraging 1-sentence thought or guiding question.`
+        );
       }
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [voiceMode]);
+  }, [voiceMode, problemTitle]);
 
   const cogColor = cognitiveLoad > 70 ? "#ef4444" : cognitiveLoad > 40 ? "#f59e0b" : "#22c55e";
   const escalationColor = activePerson.escalation >= 2 ? "#ef4444" : activePerson.escalation >= 1 ? "#f59e0b" : "#22c55e";

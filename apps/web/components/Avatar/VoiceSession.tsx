@@ -256,6 +256,8 @@ export interface VoiceSessionHandle {
   getStatus: () => VoiceSessionStatus;
   /** Returns the active AnalyserNode used for audio visualization/lip-sync */
   getAnalyserNode: () => AnalyserNode | null;
+  /** Prompts the model to speak a proactive spoken response to an action or milestone */
+  speakProactiveContext: (prompt: string) => void;
 }
 
 export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(function VoiceSession({
@@ -382,6 +384,7 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
 
     queueRef.current = new AudioPlaybackQueue(audioCtx, gainNode, (speaking) => {
       setIsSpeaking(speaking);
+      agentRef.current?.setModelSpeaking?.(speaking);
     });
 
     return { audioCtx, gainNode, analyserNode: analyser };
@@ -414,6 +417,7 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
         const { audioCtx, gainNode } = initAudioGraph();
         queueRef.current = new AudioPlaybackQueue(audioCtx, gainNode, (speaking) => {
           setIsSpeaking(speaking);
+          agentRef.current?.setModelSpeaking?.(speaking);
         });
       }
 
@@ -636,6 +640,9 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
   useImperativeHandle(ref, () => ({
     pushContext: (text: string) => {
       agentRef.current?.pushContext(text);
+    },
+    speakProactiveContext: (prompt: string) => {
+      agentRef.current?.speakProactiveContext?.(prompt);
     },
     connect: connectVoice,
     connectVoice,
