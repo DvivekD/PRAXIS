@@ -45,7 +45,16 @@
   - Refactored `SalesCallEnvironment.tsx` to serve as master Scope 2 coordinator with seamless sub-environment tabs and shared `SalesDealState`.
   - Created rigorous verification suite `apps/web/tests/test_scope2_sales.mjs` (AST zero-any checks, SSR component rendering, pricing & Deal Desk policy validation) — 100% passing.
   - Verified 100% clean Next.js 16.2.6 Turbopack production build and strict TypeScript compilation (`tsc -p tsconfig.json --noEmit`).
-- **2026-11-05 (Scope 7: Brand — The Viral Brand Crisis Sub-Environments)**:
+- **2026-11-05 (Authentic Gmail Integration, Overlay Relocation & UI Decluttering)**:
+  - **Relocated Cheat Sheet Overlay**: Moved `DemoPitchGuide.tsx` from `bottom: 16, right: 16` to `top: 18, right: 74` beside `JudgeMenu`, and converted modal to downwards dropdown to eliminate any collision with bottom controls, footers, and tab bars.
+  - **Authentic Google Gmail Integration**: Deployed user's pixel-perfect Gmail web application to `apps/web/public/gmail/index.html` with full dark/light theme, rich composer, search, smart replies, and pre-loaded Black Friday triage dataset (Jordan Mitchell Sev-1, Marcus Vance VIP, Taylor Brooks CEO gift card, Chloe Zhao marketing blast, Dr. Chen drop-off alert).
+  - **Bidirectional Telemetry Bridge**: Wired `postMessage` between Gmail iframe and `GmailInboxSubEnv.tsx` to record triage decisions, smart reply clicks, and dispatch the Black Friday Launch Protocol.
+  - **Global Workspace Decluttering**:
+    - Streamlined `SshTerminalSubEnv.tsx` by turning the 290px right runbook into a collapsible drawer (`isRunbookOpen` defaulting to `false`), simplifying initial prompt lines, and granting terminal 100% full viewport width.
+    - Set `ObserverHUD`, `ProductObserverHUD`, and `SupportObserverHUD` to start collapsed (sleek icon tabs), preventing multiple right-hand sidebars from crowding the candidate's workspace.
+    - Stripped static tutorial/anomaly notes from `SqlQuerySubEnv.tsx`, restoring an authentic Datagrip/Snowflake schema explorer.
+  - Successfully verified Next.js 16.2.6 Turbopack build, pushed to `origin main` and `old-origin main`, and deployed live to Vercel production: `https://praxis-iota-puce.vercel.app`.
+
   - Built the complete 3-sub-environment architecture under `apps/web/components/Environments/Brand/`:
     1. `SocialListeningSubEnv.tsx` (01 — Social Listening & Sentiment Monitor): Tweet / Instagram / Threads / Reddit live mention stream, viral quote-tweet cascade tracking (2,410 RTs, 8,920 QTs, reach metrics, velocity), trending keyword volume spikes (#AuraOutage +1,420%, charged twice +890%), and animated sentiment gauge.
 - **2026-11-05 (Production Release: 21 Sub-Environments, 3D Observer Models, and Dual-Engine Voice)**:
