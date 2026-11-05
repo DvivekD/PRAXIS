@@ -254,7 +254,7 @@ export default function WarRoomEnvironment({
             {chat.map((msg, i) => (
               <div key={i} style={{ background: "#0b101c", border: "1px solid #1e293b", borderRadius: 6, padding: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: msg.sender.includes("Alex") ? "#38bdf8" : msg.sender.includes("You") ? "#22c55e" : "#f59e0b" }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: (msg?.sender || "").includes("Alex") ? "#38bdf8" : (msg?.sender || "").includes("You") ? "#22c55e" : "#f59e0b" }}>
                     {msg.sender}
                   </span>
                   <span style={{ fontSize: 9, color: "#64748b" }}>{msg.time}</span>

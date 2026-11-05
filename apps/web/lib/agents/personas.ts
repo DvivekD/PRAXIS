@@ -147,7 +147,7 @@ export class PersonaOrchestrator {
 
   selectNextSpeaker(candidateMessage: string): Persona {
     this.turnsSinceSwitch++;
-    const msg = candidateMessage.toLowerCase();
+    const msg = (candidateMessage || "").toLowerCase();
 
     if (this.personas.length >= 2) {
       if (msg.includes("security") || msg.includes("risk") || msg.includes("concern") || msg.includes("technical")) {
@@ -173,7 +173,7 @@ export class PersonaOrchestrator {
       "specifically", "the root cause is", "i've identified",
       "here are three options", "based on my analysis"
     ];
-    const msg = candidateMessage.toLowerCase();
+    const msg = (candidateMessage || "").toLowerCase();
 
     if (genericPhrases.some(p => msg.includes(p))) {
       this.activePersona.escalationLevel = Math.min(3, this.activePersona.escalationLevel + 1);

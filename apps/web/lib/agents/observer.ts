@@ -68,7 +68,9 @@ export function observerNode(
     ambiguityHandling: currentDimensions?.ambiguityHandling ?? 50,
   };
 
-  const lastMsg = messages.length > 0 ? messages[messages.length - 1].content.toLowerCase() : "";
+  const lastMsg = (messages.length > 0 && messages[messages.length - 1]?.content) 
+    ? String(messages[messages.length - 1].content).toLowerCase() 
+    : "";
   const totalUserMsgs = messages.filter(m => m.role === "user").length;
 
   // ─── Telemetry Heuristics ─────────────────────────────────
@@ -111,7 +113,7 @@ export function observerNode(
   // ─── Process Signal Detection from Message Content ────────
 
   // Tool Usage & Testing
-  if (telemetry.commands?.some(c => ["run_tests", "npm test", "pytest", "cargo test"].includes(c))) {
+  if (telemetry.commands?.some(c => c && ["run_tests", "npm test", "pytest", "cargo test"].includes(c))) {
     processSignals.testBeforeShip = true;
     dims.toolUtilization += 8;
     notes.push("Candidate ran tests before proposing a solution.");

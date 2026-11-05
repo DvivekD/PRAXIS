@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, Suspense, useCallback } from "react";
 import type { VoiceSessionHandle } from "../../../components/Avatar/VoiceSession";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import dynamic from "next/dynamic";
 import { sendMessageAction } from "../../../actions/eval";
 import { VoiceSession } from "../../../components/Avatar/VoiceSession";
 
@@ -38,9 +37,9 @@ function SimulationContent() {
   const demoParam = searchParams?.get("demo");
   const demoMode = demoParam === "true" || demoParam === "1";
 
-  // Normalize domain
+  // Normalize domain safely
   const domain = DOMAIN_THEMES[domainRaw] ? domainRaw : "engineering";
-  const theme = DOMAIN_THEMES[domain];
+  const theme = DOMAIN_THEMES[domain] || DOMAIN_THEMES.engineering;
 
   // ─── ALL HOOKS MUST RESIDE AT THE TOP LEVEL (RULES OF HOOKS) ───
   const [scenarioDesc, setScenarioDesc] = useState("");
@@ -52,7 +51,7 @@ function SimulationContent() {
   const [activePerson, setActivePerson] = useState({ name: "Alex Chen", role: "Lead SRE", escalation: 0 });
   const [dimensions, setDimensions] = useState<Record<string, number>>({});
   const [codeContent, setCodeContent] = useState("");
-  const [bootPhase, setBootPhase] = useState(0); // 0 = boot, >0 = lines, -1 = ready
+  const [bootPhase, setBootPhase] = useState(-1); // Instant drop-in to environment, no fragile countdown
   const [bootLines, setBootLines] = useState<string[]>([]);
 
   // Voice agent states
@@ -143,7 +142,7 @@ function SimulationContent() {
 
   // 3. Voice turn callback
   const handleVoiceUserTurn = useCallback(async (spokenText: string) => {
-    if (!spokenText.trim()) return;
+    if (!spokenText?.trim()) return;
     setMessages((prev) => [...prev, { role: "user", content: spokenText }]);
     await submitMessage(spokenText, true);
   }, [submitMessage]);
@@ -184,32 +183,7 @@ function SimulationContent() {
     return () => clearInterval(interval);
   }, [voiceMode, problemTitle]);
 
-  // 6. Boot animation sequence
-  useEffect(() => {
-    const lines = [
-      `[ AURA COMMERCE ] Initializing ${theme.label}...`,
-      `[ AURA CLUSTER ] Node aura-prod-04 (T-minus 6h to Black Friday) ━━ OK`,
-      `[ TELEMETRY ] Observer Layer 1 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ACTIVE`,
-      `[ EVALUATION ] Behavioral kernel tracking 8 dimensions ━━━━━━━━━ READY`,
-      `▶ ENTERING WORK ENVIRONMENT: ${domain.toUpperCase()}`,
-    ];
-
-    let idx = 0;
-    const interval = setInterval(() => {
-      if (idx < lines.length) {
-        setBootLines((prev) => [...prev, lines[idx]]);
-        setBootPhase(idx + 1);
-        idx++;
-      } else {
-        clearInterval(interval);
-        setTimeout(() => setBootPhase(-1), demoMode ? 100 : 350);
-      }
-    }, demoMode ? 80 : 160);
-
-    return () => clearInterval(interval);
-  }, [domain, theme.label, demoMode]);
-
-  // 7. Initialize session from localStorage
+  // 6. Initialize session from localStorage
   useEffect(() => {
     if (!sessionId) return;
     try {
@@ -227,31 +201,36 @@ function SimulationContent() {
     }
   }, [sessionId]);
 
-  // ─── CONDITIONAL BOOT SCREEN (SAFE AFTER ALL HOOKS ARE DECLARED) ───
+  // ─── OPTIONAL BOOT SCREEN WITH TOTAL NULL SAFETY ───
   if (bootPhase >= 0) {
     return (
       <div style={{ height: "100vh", width: "100vw", background: "#020307", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'JetBrains Mono', monospace" }}>
         <div style={{ width: "100%", maxWidth: 640, padding: "0 24px" }}>
-          <div style={{ fontSize: 11, color: theme.accent, letterSpacing: "3px", marginBottom: 20, textAlign: "center", fontWeight: 800 }}>
-            ◈ PRAXIS // {theme.label}
+          <div style={{ fontSize: 11, color: theme?.accent || "#00ff41", letterSpacing: "3px", marginBottom: 20, textAlign: "center", fontWeight: 800 }}>
+            ◈ PRAXIS // {theme?.label || "SYSTEM"}
           </div>
-          <div style={{ background: "#060911", border: `1px solid ${theme.accent}40`, padding: 24, minHeight: 220, borderRadius: 8 }}>
-            {bootLines.map((line, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                style={{
-                  fontSize: 12,
-                  lineHeight: 2,
-                  color: line.includes("OK") || line.includes("ACTIVE") || line.includes("READY") ? theme.accent : "#94a3b8",
-                  fontWeight: line.includes("▶") ? 800 : 400,
-                }}
-              >
-                {line}
-              </motion.div>
-            ))}
-            {bootPhase > 0 && <span style={{ color: theme.accent }}>▌</span>}
+          <div style={{ background: "#060911", border: `1px solid ${(theme?.accent || "#00ff41")}40`, padding: 24, minHeight: 220, borderRadius: 8 }}>
+            {bootLines.filter(Boolean).map((line, i) => {
+              const safe = line || "";
+              const isStatus = safe.includes("OK") || safe.includes("ACTIVE") || safe.includes("READY");
+              const isHeader = safe.includes("▶");
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  style={{
+                    fontSize: 12,
+                    lineHeight: 2,
+                    color: isStatus ? theme?.accent || "#00ff41" : "#94a3b8",
+                    fontWeight: isHeader ? 800 : 400,
+                  }}
+                >
+                  {safe}
+                </motion.div>
+              );
+            })}
+            {bootPhase > 0 && <span style={{ color: theme?.accent || "#00ff41" }}>▌</span>}
           </div>
         </div>
       </div>
