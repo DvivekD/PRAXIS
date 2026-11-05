@@ -25,7 +25,7 @@ export default function ObserverHUD({
   recentTelemetry = [],
   onInteract,
 }: ObserverHUDProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [simulatedCognitive, setSimulatedCognitive] = useState(cognitiveLoad);
 
   // Subtle natural pulse in cognitive load

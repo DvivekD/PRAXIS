@@ -347,37 +347,6 @@ export default function SqlQuerySubEnv({
           </span>
         </div>
 
-        {/* Diagnostic Context Note */}
-        <div
-          style={{
-            margin: "12px 14px",
-            padding: "10px 12px",
-            background: isFixed ? "rgba(34,197,94,0.06)" : "rgba(239,68,68,0.08)",
-            border: `1px solid ${isFixed ? "#22c55e40" : "#ef444450"}`,
-            borderRadius: 6,
-            fontSize: 10,
-            lineHeight: 1.5,
-          }}
-        >
-          <div
-            style={{
-              color: isFixed ? "#22c55e" : "#ef4444",
-              fontWeight: 800,
-              marginBottom: 4,
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-            }}
-          >
-            <span>{isFixed ? "✓ INTEGRITY VERIFIED" : "⚠️ REPORTING ANOMALY"}</span>
-          </div>
-          <div style={{ color: "#94a3b8" }}>
-            {isFixed
-              ? "Distinct subscriber join applied across sessions. Active non-paying users restored (+18%)."
-              : "DAU dropped 18% on Nov 04. Check `sessions` vs `transactions`: Joining transactions drops free-tier and browsing subscribers!"}
-          </div>
-        </div>
-
         {/* Schema Tree */}
         <div style={{ padding: "8px 12px", flex: 1 }}>
           <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase", marginBottom: 8, paddingLeft: 4 }}>

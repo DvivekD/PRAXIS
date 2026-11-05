@@ -34,6 +34,7 @@ export default function SshTerminalSubEnv({
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isTopRunning, setIsTopRunning] = useState(false);
   const [topTicks, setTopTicks] = useState(0);
+  const [isRunbookOpen, setIsRunbookOpen] = useState(false);
 
   const [findings, setFindings] = useState<FindingItem[]>([
     {
@@ -67,13 +68,9 @@ export default function SshTerminalSubEnv({
   ]);
 
   const [output, setOutput] = useState<TerminalLine[]>([
-    { text: "Connecting to remote infrastructure host...", color: "#64748b" },
-    { text: "SSH-2.0-OpenSSH_9.6p1 Ubuntu-3ubuntu13.4", color: "#64748b" },
-    { text: "Authenticated to aura-prod-app-04 (10.244.2.14) via ed25519 key.", color: "#22c55e", isBold: true },
-    { text: "Linux aura-prod-app-04 6.5.0-41-generic #42-Ubuntu SMP x86_64", color: "#94a3b8" },
-    { text: "Black Friday High-Traffic Cluster — Host role: [CHECKOUT_PROCESSING_NODE]", color: "#38bdf8" },
-    { text: "ALERT: Customer checkout requests are timing out with HTTP 504 Gateway Timeout.", color: "#ef4444", isBold: true },
-    { text: "Type 'help' for diagnostics, or run 'ps aux', 'top', 'free -m', 'systemctl status checkout-worker'.", color: "#f59e0b" },
+    { text: "SSH-2.0-OpenSSH_9.6p1 Ubuntu-3ubuntu13.4 | Connected to aura-prod-app-04 (10.244.2.14)", color: "#22c55e", isBold: true },
+    { text: "ALERT: Customer checkout requests are timing out with HTTP 504 Gateway Timeout.", color: "#ef4444" },
+    { text: "Run diagnostic commands (ps aux, top, free -m, tail timeout.log, help)...", color: "#64748b" },
     { text: "", color: "#888" },
   ]);
 
@@ -538,6 +535,27 @@ export default function SshTerminalSubEnv({
           >
             {isTopRunning ? "QUIT TOP [q]" : "RUN [top]"}
           </button>
+
+          <button
+            onClick={() => setIsRunbookOpen(!isRunbookOpen)}
+            style={{
+              padding: "4px 10px",
+              background: isRunbookOpen ? "rgba(56,189,248,0.2)" : "rgba(255,255,255,0.05)",
+              border: isRunbookOpen ? "1px solid #38bdf8" : "1px solid rgba(255,255,255,0.15)",
+              color: isRunbookOpen ? "#38bdf8" : "#94a3b8",
+              borderRadius: 4,
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span>📋</span>
+            <span>RUNBOOK ({discoveredCount}/4)</span>
+          </button>
         </div>
       </div>
 
@@ -677,157 +695,156 @@ export default function SshTerminalSubEnv({
           <div ref={endRef} />
         </div>
 
-        {/* Right Side: Host Diagnostics Runbook & Clues Panel */}
-        <div
-          style={{
-            width: 290,
-            background: "#050912",
-            borderLeft: "1px solid #1e293b",
-            display: "flex",
-            flexDirection: "column",
-            padding: 14,
-            gap: 12,
-            overflowY: "auto",
-          }}
-        >
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: "#38bdf8", letterSpacing: "1px" }}>
-                HOST INVESTIGATION
+        {/* Right Side: Host Diagnostics Runbook & Clues Panel (Collapsible) */}
+        {isRunbookOpen && (
+          <div
+            style={{
+              width: 300,
+              background: "#050912",
+              borderLeft: "1px solid #1e293b",
+              display: "flex",
+              flexDirection: "column",
+              padding: 14,
+              gap: 12,
+              overflowY: "auto",
+            }}
+          >
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: "#38bdf8", letterSpacing: "1px" }}>
+                  HOST INVESTIGATION
+                </span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 800,
+                    color: discoveredCount === 4 ? "#00ff41" : "#f59e0b",
+                    background: discoveredCount === 4 ? "rgba(0,255,65,0.12)" : "rgba(245,158,11,0.12)",
+                    padding: "2px 6px",
+                    borderRadius: 3,
+                  }}
+                >
+                  {discoveredCount} / 4 DISCOVERED
+                </span>
+              </div>
+            </div>
+
+            {/* Quick command buttons */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span style={{ fontSize: 9, color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>
+                Quick Inspection Probes
               </span>
-              <span
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                {[
+                  { label: "ps aux", cmd: "ps aux" },
+                  { label: "top", cmd: "top" },
+                  { label: "free -m", cmd: "free -m" },
+                  { label: "uptime", cmd: "uptime" },
+                  { label: "tail logs", cmd: "cat /var/log/checkout/timeout.log" },
+                  { label: "systemctl", cmd: "systemctl status checkout-worker" },
+                  { label: "ss -s", cmd: "ss -s" },
+                  { label: "netstat", cmd: "netstat -tulnp" },
+                ].map((b) => (
+                  <button
+                    key={b.cmd}
+                    onClick={() => handleCommand(b.cmd)}
+                    style={{
+                      padding: "5px 6px",
+                      background: "#0c1322",
+                      border: "1px solid #1e293b",
+                      color: "#cbd5e1",
+                      borderRadius: 4,
+                      fontSize: 10,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      textAlign: "center",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    $ {b.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Investigation Findings Checklist */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+              <span style={{ fontSize: 9, color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>
+                Diagnostic Findings Log
+              </span>
+
+              {findings.map((f) => (
+                <div
+                  key={f.id}
+                  style={{
+                    padding: "8px 10px",
+                    background: f.discovered ? "rgba(0, 255, 65, 0.05)" : "#090d16",
+                    border: `1px solid ${f.discovered ? "#00ff41" : "#1e293b"}`,
+                    borderRadius: 4,
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                    <span style={{ color: f.discovered ? "#00ff41" : "#64748b", fontSize: 11 }}>
+                      {f.discovered ? "✓" : "○"}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: f.discovered ? "#f8fafc" : "#94a3b8",
+                      }}
+                    >
+                      {f.title}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 10, color: f.discovered ? "#86efac" : "#475569", lineHeight: 1.4 }}>
+                    {f.discovered ? f.detail : `Run diagnostic commands (${f.commandTrigger[0]}...) to uncover.`}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Step progression card if all findings unlocked */}
+            {discoveredCount >= 3 && onNavigateSubEnv && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
                 style={{
-                  fontSize: 10,
-                  fontWeight: 800,
-                  color: discoveredCount === 4 ? "#00ff41" : "#f59e0b",
-                  background: discoveredCount === 4 ? "rgba(0,255,65,0.12)" : "rgba(245,158,11,0.12)",
-                  padding: "2px 6px",
-                  borderRadius: 3,
+                  marginTop: "auto",
+                  padding: 10,
+                  background: "rgba(56, 189, 248, 0.08)",
+                  border: "1px solid #38bdf8",
+                  borderRadius: 4,
                 }}
               >
-                {discoveredCount} / 4 DISCOVERED
-              </span>
-            </div>
-            <p style={{ fontSize: 10, color: "#64748b", margin: "4px 0 0 0" }}>
-              Investigate the remote server to identify why checkout requests are timing out.
-            </p>
-          </div>
-
-          {/* Quick command buttons */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span style={{ fontSize: 9, color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>
-              Quick Inspection Probes
-            </span>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-              {[
-                { label: "ps aux", cmd: "ps aux" },
-                { label: "top", cmd: "top" },
-                { label: "free -m", cmd: "free -m" },
-                { label: "uptime", cmd: "uptime" },
-                { label: "tail logs", cmd: "cat /var/log/checkout/timeout.log" },
-                { label: "systemctl", cmd: "systemctl status checkout-worker" },
-                { label: "ss -s", cmd: "ss -s" },
-                { label: "netstat", cmd: "netstat -tulnp" },
-              ].map((b) => (
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#38bdf8", marginBottom: 4 }}>
+                  Next Step: Isolate Network Layer
+                </div>
+                <div style={{ fontSize: 10, color: "#cbd5e1", lineHeight: 1.4, marginBottom: 8 }}>
+                  Host CPU/RAM is fine, but workers are waiting on upstream socket responses.
+                </div>
                 <button
-                  key={b.cmd}
-                  onClick={() => handleCommand(b.cmd)}
+                  onClick={() => onNavigateSubEnv("network")}
                   style={{
-                    padding: "5px 6px",
-                    background: "#0c1322",
-                    border: "1px solid #1e293b",
-                    color: "#cbd5e1",
+                    width: "100%",
+                    padding: "7px 10px",
+                    background: "#38bdf8",
+                    color: "#020408",
+                    border: "none",
                     borderRadius: 4,
-                    fontSize: 10,
-                    fontWeight: 600,
+                    fontSize: 11,
+                    fontWeight: 800,
                     cursor: "pointer",
-                    textAlign: "center",
                     fontFamily: "inherit",
                   }}
                 >
-                  $ {b.label}
+                  OPEN NETWORK LAB ▶
                 </button>
-              ))}
-            </div>
+              </motion.div>
+            )}
           </div>
-
-          {/* Investigation Findings Checklist */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
-            <span style={{ fontSize: 9, color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>
-              Diagnostic Findings Log
-            </span>
-
-            {findings.map((f) => (
-              <div
-                key={f.id}
-                style={{
-                  padding: "8px 10px",
-                  background: f.discovered ? "rgba(0, 255, 65, 0.05)" : "#090d16",
-                  border: `1px solid ${f.discovered ? "#00ff41" : "#1e293b"}`,
-                  borderRadius: 4,
-                  transition: "all 0.2s ease",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-                  <span style={{ color: f.discovered ? "#00ff41" : "#64748b", fontSize: 11 }}>
-                    {f.discovered ? "✓" : "○"}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: f.discovered ? "#f8fafc" : "#94a3b8",
-                    }}
-                  >
-                    {f.title}
-                  </span>
-                </div>
-                <div style={{ fontSize: 10, color: f.discovered ? "#86efac" : "#475569", lineHeight: 1.4 }}>
-                  {f.discovered ? f.detail : `Run diagnostic commands (${f.commandTrigger[0]}...) to uncover.`}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Step progression card if all findings unlocked */}
-          {discoveredCount >= 3 && onNavigateSubEnv && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              style={{
-                marginTop: "auto",
-                padding: 10,
-                background: "rgba(56, 189, 248, 0.08)",
-                border: "1px solid #38bdf8",
-                borderRadius: 4,
-              }}
-            >
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#38bdf8", marginBottom: 4 }}>
-                Next Step: Isolate Network Layer
-              </div>
-              <div style={{ fontSize: 10, color: "#cbd5e1", lineHeight: 1.4, marginBottom: 8 }}>
-                Host CPU/RAM is fine, but workers are waiting on upstream socket responses. Move to the Network Diagnostics Lab.
-              </div>
-              <button
-                onClick={() => onNavigateSubEnv("network")}
-                style={{
-                  width: "100%",
-                  padding: "7px 10px",
-                  background: "#38bdf8",
-                  color: "#020408",
-                  border: "none",
-                  borderRadius: 4,
-                  fontSize: 11,
-                  fontWeight: 800,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                OPEN NETWORK LAB ▶
-              </button>
-            </motion.div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );

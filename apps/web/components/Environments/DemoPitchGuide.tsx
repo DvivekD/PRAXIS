@@ -81,7 +81,7 @@ export default function DemoPitchGuide({ domain, onQuickSolve }: DemoPitchGuideP
   const info = DOMAIN_HINTS[domain] || DOMAIN_HINTS.engineering;
 
   return (
-    <div style={{ position: "fixed", bottom: 16, right: 16, zIndex: 9990, fontFamily: "'JetBrains Mono', monospace" }}>
+    <div style={{ position: "fixed", top: 18, right: 74, zIndex: 9998, fontFamily: "'JetBrains Mono', monospace" }}>
       <motion.button
         whileHover={{ scale: 1.03, borderColor: "#f59e0b" }}
         whileTap={{ scale: 0.97 }}
@@ -90,45 +90,47 @@ export default function DemoPitchGuide({ domain, onQuickSolve }: DemoPitchGuideP
           background: "rgba(8, 12, 20, 0.95)",
           color: "#f59e0b",
           border: "1px solid rgba(245, 158, 11, 0.5)",
-          padding: "7px 14px",
-          borderRadius: 4,
-          fontSize: 11,
+          padding: "6px 12px",
+          borderRadius: 20,
+          fontSize: 10,
           fontWeight: 800,
-          letterSpacing: "1px",
+          letterSpacing: "0.5px",
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
-          gap: 8,
+          gap: 6,
           boxShadow: "0 0 15px rgba(245, 158, 11, 0.15)",
           backdropFilter: "blur(10px)",
         }}
       >
         <span style={{ color: "#f59e0b" }}>⚡</span>
-        <span>[ DEMO_PITCH_CHEAT_SHEET ]</span>
-        <span style={{ fontSize: 9, background: "rgba(245, 158, 11, 0.15)", border: "1px solid #f59e0b", color: "#f59e0b", padding: "1px 6px", borderRadius: 2 }}>
-          {isOpen ? "CLOSE" : "OPEN"}
+        <span>CHEAT SHEET</span>
+        <span style={{ fontSize: 9, background: "rgba(245, 158, 11, 0.15)", border: "1px solid #f59e0b", color: "#f59e0b", padding: "1px 5px", borderRadius: 10 }}>
+          {isOpen ? "✕" : "OPEN"}
         </span>
       </motion.button>
 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.96 }}
+            initial={{ opacity: 0, y: -10, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.96 }}
+            exit={{ opacity: 0, y: -10, scale: 0.96 }}
             transition={{ duration: 0.15 }}
             style={{
               position: "absolute",
-              bottom: 44,
+              top: 40,
               right: 0,
               width: 380,
+              maxHeight: "calc(100vh - 80px)",
+              overflowY: "auto",
               background: "rgba(8, 12, 20, 0.98)",
               border: "1px solid rgba(245, 158, 11, 0.5)",
               borderRadius: 6,
-              boxShadow: "0 0 30px rgba(0,0,0,0.8), 0 0 15px rgba(245,158,11,0.15)",
+              boxShadow: "0 10px 40px rgba(0,0,0,0.9), 0 0 15px rgba(245,158,11,0.2)",
               padding: 16,
               color: "#fff",
-              backdropFilter: "blur(12px)",
+              backdropFilter: "blur(16px)",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>

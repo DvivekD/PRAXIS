@@ -21,7 +21,7 @@ export default function ProductObserverHUD({
   activePersona = { name: "Taylor Brooks", role: "CEO" },
   signals = {},
 }: ProductObserverHUDProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
     <div

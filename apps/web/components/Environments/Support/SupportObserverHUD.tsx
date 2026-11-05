@@ -44,7 +44,7 @@ export default function SupportObserverHUD({
   gatewayInspected = false,
   onInteract,
 }: SupportObserverHUDProps) {
-  const [isExpanded, setIsExpanded] = useState<boolean>(true);
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   const getSubEnvLabel = () => {
     switch (activeSubEnv) {
