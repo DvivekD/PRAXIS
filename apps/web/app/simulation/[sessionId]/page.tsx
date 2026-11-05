@@ -17,6 +17,7 @@ import HelpdeskEnvironment from "../../../components/Environments/HelpdeskEnviro
 import SocialCommandEnvironment from "../../../components/Environments/SocialCommandEnvironment";
 import DemoPitchGuide from "../../../components/Environments/DemoPitchGuide";
 import ObserverWidget from "../../../components/Avatar/ObserverWidget";
+import AntiCheatShield from "../../../components/AntiCheat/AntiCheatShield";
 
 const DOMAIN_THEMES: Record<string, { accent: string; accentDim: string; label: string }> = {
   engineering: { accent: "#00ff41", accentDim: "rgba(0,255,65,0.15)", label: "ENGINEERING // TERMINAL" },
@@ -365,6 +366,17 @@ function SimulationContent() {
             } catch {}
           }
           setTimeout(() => router.push(`/results/${sessionId}`), 2200);
+        }}
+      />
+
+      {/* Real-time Proctoring Integrity & Anti-Cheating Shield */}
+      <AntiCheatShield
+        sessionId={sessionId}
+        onViolation={(violation, strikes) => {
+          handleInteract(`[PROCTORING_SIGNAL] Integrity violation: ${violation.type} (${violation.description}) - Current Strikes: ${strikes}`);
+          if (strikes >= 2) {
+            setCognitiveLoad((prev) => Math.min(100, prev + 15));
+          }
         }}
       />
 
