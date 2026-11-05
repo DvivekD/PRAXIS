@@ -414,7 +414,7 @@ export class VoiceAgent {
     const sourceNode = audioCtx.createMediaStreamSource(stream);
     this.micSourceNode = sourceNode;
 
-    const bufferSize = 4096;
+    const bufferSize = 1024; // Ultra-low latency audio processing buffer (64ms at 16kHz vs 256ms)
     const processorNode = audioCtx.createScriptProcessor(bufferSize, 1, 1);
     this.micProcessorNode = processorNode;
 
@@ -448,18 +448,18 @@ export class VoiceAgent {
         const rms = Math.sqrt(sumSquares / inputChannelData.length);
 
         // Acoustic echo / speaker feedback protection:
-        // While model is actively outputting audio, allow intentional user barge-in (rms >= 0.025)
+        // While model is actively outputting audio, allow intentional user barge-in (rms >= 0.02)
         // while suppressing light speaker acoustic feedback bleed.
         if (this.isModelSpeaking) {
-          if (rms < 0.025) {
+          if (rms < 0.02) {
             return;
           }
           this.lastSpeechTime = Date.now();
         } else {
-          // Model is silent: high-sensitivity conversational gate (0.003) captures soft speech with 500ms hangover
-          if (rms >= 0.003) {
+          // Model is silent: ultra-sensitive conversational gate (0.002) with snappy 220ms hangover
+          if (rms >= 0.002) {
             this.lastSpeechTime = Date.now();
-          } else if (Date.now() - this.lastSpeechTime > 500) {
+          } else if (Date.now() - this.lastSpeechTime > 220) {
             // Ambient silence below gate
             return;
           }

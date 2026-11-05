@@ -393,6 +393,11 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
   const ttsDriverOscRef = useRef<OscillatorNode | null>(null);
   const ttsDriverGainRef = useRef<GainNode | null>(null);
   const ttsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Ultra-low latency interim speech debouncer: triggers companion reply within 380ms of silence
+  // bypassing Chrome's native 1.2s-1.5s isFinal dead-air delay
+  const interimSilenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastProcessedTextRef = useRef<string>("");
+  const pendingInterimTextRef = useRef<string>("");
 
   // Keep turn callback updated
   useEffect(() => {
@@ -596,7 +601,7 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
           (window as unknown as { __praxisActiveUtterance?: SpeechSynthesisUtterance }).__praxisActiveUtterance = utterance;
         }
 
-        utterance.rate = 1.02;
+        utterance.rate = 1.08;
         utterance.pitch = domain === "sales" ? 0.94 : 1.0;
         
         utterance.onstart = () => {
@@ -732,6 +737,34 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
       rec.interimResults = true;
       rec.lang = "en-US";
 
+      const processSpokenTurn = (rawText: string) => {
+        const completedTurn = rawText.trim();
+        if (!completedTurn || completedTurn.length < 2) return;
+        // Prevent duplicate processing if interim timer and isFinal fire on same speech
+        if (completedTurn.toLowerCase() === lastProcessedTextRef.current.toLowerCase()) {
+          return;
+        }
+        lastProcessedTextRef.current = completedTurn;
+        if (interimSilenceTimerRef.current) {
+          clearTimeout(interimSilenceTimerRef.current);
+          interimSilenceTimerRef.current = null;
+        }
+        pendingInterimTextRef.current = "";
+
+        onTranscript?.("user", completedTurn);
+        onUserTurn?.(completedTurn);
+
+        void generateFallbackReply(completedTurn).then((reply) => {
+          onTranscript?.("model", reply);
+          setRecentTranscripts((prev) => [
+            ...prev.slice(-3),
+            { id: Math.random().toString(36).substring(2, 9), role: "user", text: completedTurn, timestamp: Date.now() },
+            { id: Math.random().toString(36).substring(2, 9), role: "model", text: reply, timestamp: Date.now() }
+          ]);
+          speakFallback(reply);
+        });
+      };
+
       rec.onresult = (event: SpeechRecognitionEventLike) => {
         let interim = "";
         let finalChunk = "";
@@ -758,25 +791,24 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
           }
         }
 
-        // Only emit interim transcript for live preview without appending to final buffer
-        if (interim.trim()) {
-          onTranscript?.("user", interim.trim());
-        }
-
         if (finalChunk.trim()) {
-          const completedTurn = finalChunk.trim();
-          onTranscript?.("user", completedTurn);
-          onUserTurn?.(completedTurn);
+          processSpokenTurn(finalChunk.trim());
+        } else if (interim.trim()) {
+          // Emit interim transcript for real-time live preview
+          onTranscript?.("user", interim.trim());
+          pendingInterimTextRef.current = interim.trim();
 
-          void generateFallbackReply(completedTurn).then((reply) => {
-            onTranscript?.("model", reply);
-            setRecentTranscripts((prev) => [
-              ...prev.slice(-3),
-              { id: Math.random().toString(36).substring(2, 9), role: "user", text: completedTurn, timestamp: Date.now() },
-              { id: Math.random().toString(36).substring(2, 9), role: "model", text: reply, timestamp: Date.now() }
-            ]);
-            speakFallback(reply);
-          });
+          // Reset interim silence timer: if candidate pauses for 380ms after speaking,
+          // trigger companion reply immediately without waiting 1.2s-1.5s for Chrome's native isFinal
+          if (interimSilenceTimerRef.current) {
+            clearTimeout(interimSilenceTimerRef.current);
+          }
+          interimSilenceTimerRef.current = setTimeout(() => {
+            const pending = pendingInterimTextRef.current.trim();
+            if (pending && pending.toLowerCase() !== lastProcessedTextRef.current.toLowerCase()) {
+              processSpokenTurn(pending);
+            }
+          }, 380);
         }
       };
 
@@ -806,6 +838,11 @@ export const VoiceSession = forwardRef<VoiceSessionHandle, VoiceSessionProps>(fu
    * Stops local Web SpeechRecognition cleanly.
    */
   const stopFallbackRecognition = useCallback(() => {
+    if (interimSilenceTimerRef.current) {
+      clearTimeout(interimSilenceTimerRef.current);
+      interimSilenceTimerRef.current = null;
+    }
+    pendingInterimTextRef.current = "";
     if (recognitionRef.current) {
       try {
         recognitionRef.current.onend = null;

@@ -106,16 +106,17 @@ YOUR ROLE & BEHAVIOR:
       content: m.content,
     }));
 
-    // If GROQ_API_KEY is configured, call Groq via AI SDK for <250ms ultra-low latency response
+    // If GROQ_API_KEY is configured, call Groq via AI SDK for <120ms ultra-low latency response
     if (process.env.GROQ_API_KEY) {
       const { text: replyText } = await generateText({
-        model: groq("llama-3.3-70b-versatile"),
+        model: groq("llama-3.1-8b-instant"),
         system: systemPrompt,
         messages: [
           ...recentHistory,
           { role: "user", content: request.userMessage },
         ],
         temperature: isInterviewer ? 0.7 : 0.6,
+        maxOutputTokens: 85,
       });
 
       return {
