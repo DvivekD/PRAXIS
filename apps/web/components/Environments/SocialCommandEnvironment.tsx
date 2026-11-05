@@ -7,6 +7,7 @@ import SocialListeningSubEnv from "./Brand/SocialListeningSubEnv";
 import BrandContentStudioSubEnv from "./Brand/BrandContentStudioSubEnv";
 import CrisisCommandSubEnv from "./Brand/CrisisCommandSubEnv";
 import type { BrandMention, PressInquiry, PublishedStatement } from "./Brand/types";
+import { VoiceSession } from "../Avatar/VoiceSession";
 
 const AvatarScene = dynamic(() => import("../Avatar/AvatarScene"), { ssr: false });
 
@@ -167,6 +168,7 @@ export default function SocialCommandEnvironment({
   const [pressInquiries, setPressInquiries] = useState<PressInquiry[]>(INITIAL_PRESS_INQUIRIES);
   const [publishedStatement, setPublishedStatement] = useState<PublishedStatement | null>(null);
   const [showObserverHud, setShowObserverHud] = useState<boolean>(true);
+  const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(18 * 60 + 42); // Crisis t+18m
 
   // Timer
@@ -452,6 +454,33 @@ export default function SocialCommandEnvironment({
               {/* 3D Avatar Scene Embedded */}
               <div style={{ width: "100%", height: 260, position: "relative", background: "#020202" }}>
                 <AvatarScene analyserNode={analyserNode} domain="brand" onInteract={onAction} />
+
+                {/* Maximize to full-screen button */}
+                <button
+                  onClick={() => setIsFullScreen(true)}
+                  style={{
+                    position: "absolute",
+                    top: 8,
+                    right: 8,
+                    background: "rgba(10, 15, 30, 0.8)",
+                    border: "1px solid #ec4899",
+                    color: "#f472b6",
+                    padding: "3px 8px",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    backdropFilter: "blur(6px)",
+                    zIndex: 10,
+                  }}
+                  title="Maximize 3D Observer to Full Screen with Live Voice"
+                >
+                  <span>⛶</span>
+                  <span>MAXIMIZE FULL SCREEN</span>
+                </button>
               </div>
 
               {/* Cognitive Telemetry & Heuristics */}
@@ -535,6 +564,102 @@ export default function SocialCommandEnvironment({
           )}
         </AnimatePresence>
       </div>
+
+      {/* Full-Screen Immersive 3D Observer Live Overlay (Matching /test-avatar) */}
+      {isFullScreen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "#05060b",
+            zIndex: 99999,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* Top Bar with Status and Minimize Button */}
+          <div
+            style={{
+              position: "absolute",
+              top: 20,
+              left: 24,
+              right: 24,
+              zIndex: 100,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              pointerEvents: "none",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                background: "rgba(5, 8, 16, 0.85)",
+                border: "1px solid rgba(236, 72, 153, 0.4)",
+                padding: "8px 18px",
+                borderRadius: 24,
+                backdropFilter: "blur(12px)",
+                pointerEvents: "auto",
+                boxShadow: "0 0 15px rgba(236, 72, 153, 0.2)",
+              }}
+            >
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  background: "#ec4899",
+                  boxShadow: "0 0 12px #ec4899",
+                }}
+              />
+              <span style={{ fontSize: 12, fontWeight: 800, color: "#ec4899", letterSpacing: "1px" }}>
+                3D OBSERVER LIVE // FULL SCREEN
+              </span>
+            </div>
+
+            <button
+              onClick={() => setIsFullScreen(false)}
+              style={{
+                background: "rgba(15, 23, 42, 0.9)",
+                border: "1px solid rgba(255, 255, 255, 0.25)",
+                color: "#f8fafc",
+                padding: "8px 18px",
+                borderRadius: 24,
+                cursor: "pointer",
+                fontSize: 12,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                backdropFilter: "blur(12px)",
+                pointerEvents: "auto",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.7)",
+              }}
+            >
+              <span style={{ color: "#ef4444", fontWeight: 900 }}>✕</span>
+              <span>MINIMIZE TO WORKSPACE</span>
+            </button>
+          </div>
+
+          {/* Full Screen Live Voice Session (Identical to /test-avatar) */}
+          <div style={{ flex: 1, width: "100%", height: "100%", position: "relative" }}>
+            <VoiceSession
+              domain="brand"
+              problemTitle="Scope 7 Brand: The Viral Brand Crisis"
+              scenario="Viral tweet on double billing with 2.4k likes. Coordinate public apology, address media inquiries from TechCrunch, and de-escalate sentiment."
+              autoConnect={true}
+              initialEngine="live"
+              showAvatar={true}
+              compact={false}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

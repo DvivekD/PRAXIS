@@ -36,6 +36,7 @@ export default function ObserverWidget({
 }: ObserverWidgetProps) {
   const hasDedicatedHud = ["brand", "sales", "support", "data"].includes(domain.toLowerCase());
   const [isMinimized, setIsMinimized] = useState(hasDedicatedHud);
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const [observerMode, setObserverMode] = useState<VoiceSessionMode>("guide");
   const voiceSessionRef = useRef<VoiceSessionHandle>(null);
   const themeColor = DOMAIN_COLORS[domain.toLowerCase()] || "#00ff41";
@@ -58,8 +59,8 @@ export default function ObserverWidget({
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.8, opacity: 0 }}
-            onClick={() => setIsMinimized(false)}
-            title="Expand 3D Observer & Talk"
+            onClick={() => setIsFullScreen(true)}
+            title="Maximize 3D Observer to Full Screen with Live Voice"
             style={{
               display: "flex",
               alignItems: "center",
@@ -91,9 +92,9 @@ export default function ObserverWidget({
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
               <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "1px", color: themeColor }}>
-                3D OBSERVER [TALK]
+                3D OBSERVER [LIVE]
               </span>
-              <span style={{ fontSize: 9, color: "#94a3b8" }}>▲ CLICK TO EXPAND</span>
+              <span style={{ fontSize: 9, color: "#94a3b8" }}>⛶ CLICK TO MAXIMIZE</span>
             </div>
           </motion.button>
         ) : (
@@ -178,105 +179,33 @@ export default function ObserverWidget({
                 domain={domain}
                 onInteract={onInteract}
               />
-            </div>
 
-            {/* 2-Way Voice Agent Live Control Panel */}
-            <div
-              style={{
-                padding: "10px 14px",
-                background: "rgba(5, 8, 16, 0.9)",
-                borderBottom: `1px solid ${themeColor}20`,
-                display: "flex",
-                flexDirection: "column",
-                gap: 8,
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>
-                  2-Way Voice Dialogue
-                </span>
-                <button
-                  onClick={() => {
-                    const next: VoiceSessionMode = observerMode === "interviewer" ? "guide" : "interviewer";
-                    setObserverMode(next);
-                    voiceSessionRef.current?.setMode(next);
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                    padding: "3px 8px",
-                    background: observerMode === "interviewer" ? "rgba(239, 68, 68, 0.2)" : `${themeColor}20`,
-                    border: `1px solid ${observerMode === "interviewer" ? "#ef4444" : themeColor}`,
-                    borderRadius: 12,
-                    color: observerMode === "interviewer" ? "#fca5a5" : themeColor,
-                    fontSize: 10,
-                    fontFamily: "monospace",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
-                >
-                  {observerMode === "interviewer" ? "🎯 INTERVIEWER MODE" : "🛠️ CO-PILOT MODE"}
-                </button>
-              </div>
-
-              <div style={{ height: 165, position: "relative", borderRadius: 8, overflow: "hidden", border: `1px solid ${themeColor}25` }}>
-                <VoiceSession
-                  ref={voiceSessionRef}
-                  mode={observerMode}
-                  domain={domain}
-                  problemTitle={`Scope ${domain.toUpperCase()} Simulation Assessment`}
-                  scenario="Candidate live interactive workspace simulation"
-                  autoConnect={!isMinimized}
-                  initialEngine="fallback"
-                  showAvatar={false}
-                  compact={true}
-                />
-              </div>
-
-              {/* Quick Prompt Pills */}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                <button
-                  onClick={() => {
-                    voiceSessionRef.current?.speakProactiveContext(
-                      `Give me a subtle hint or architectural tip for the ${domain} problem.`
-                    );
-                  }}
-                  style={{
-                    fontSize: 10,
-                    color: "#94a3b8",
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    padding: "3px 8px",
-                    borderRadius: 4,
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  💡 Give me a subtle hint
-                </button>
-                <button
-                  onClick={() => {
-                    setObserverMode("interviewer");
-                    voiceSessionRef.current?.setMode("interviewer");
-                    voiceSessionRef.current?.speakProactiveContext(
-                      `Grill me on my technical strategy and trade-offs for this ${domain} challenge.`
-                    );
-                  }}
-                  style={{
-                    fontSize: 10,
-                    color: "#fca5a5",
-                    background: "rgba(239,68,68,0.1)",
-                    border: "1px solid rgba(239,68,68,0.3)",
-                    padding: "3px 8px",
-                    borderRadius: 4,
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  🎯 Grill me on this architecture
-                </button>
-              </div>
+              {/* Maximize to full-screen button */}
+              <button
+                onClick={() => setIsFullScreen(true)}
+                style={{
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  background: "rgba(10, 15, 30, 0.8)",
+                  border: `1px solid ${themeColor}`,
+                  color: "#fff",
+                  padding: "3px 8px",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  backdropFilter: "blur(6px)",
+                  zIndex: 10,
+                }}
+                title="Maximize 3D Observer to Full Screen with Live Voice"
+              >
+                <span>⛶</span>
+                <span>MAXIMIZE FULL SCREEN</span>
+              </button>
             </div>
 
             {/* Telemetry Footer */}
@@ -334,6 +263,102 @@ export default function ObserverWidget({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Full-Screen Immersive 3D Observer Live Overlay (Matching /test-avatar) */}
+      {isFullScreen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "#03060d",
+            zIndex: 99999,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* Top Bar with Status and Minimize Button */}
+          <div
+            style={{
+              position: "absolute",
+              top: 20,
+              left: 24,
+              right: 24,
+              zIndex: 100,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              pointerEvents: "none",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                background: "rgba(5, 8, 16, 0.85)",
+                border: `1px solid ${themeColor}60`,
+                padding: "8px 18px",
+                borderRadius: 24,
+                backdropFilter: "blur(12px)",
+                pointerEvents: "auto",
+                boxShadow: `0 0 15px ${themeColor}30`,
+              }}
+            >
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  background: themeColor,
+                  boxShadow: `0 0 12px ${themeColor}`,
+                }}
+              />
+              <span style={{ fontSize: 12, fontWeight: 800, color: themeColor, letterSpacing: "1px" }}>
+                3D OBSERVER LIVE // FULL SCREEN
+              </span>
+            </div>
+
+            <button
+              onClick={() => setIsFullScreen(false)}
+              style={{
+                background: "rgba(15, 23, 42, 0.9)",
+                border: "1px solid rgba(255, 255, 255, 0.25)",
+                color: "#f8fafc",
+                padding: "8px 18px",
+                borderRadius: 24,
+                cursor: "pointer",
+                fontSize: 12,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                backdropFilter: "blur(12px)",
+                pointerEvents: "auto",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.7)",
+              }}
+            >
+              <span style={{ color: "#ef4444", fontWeight: 900 }}>✕</span>
+              <span>MINIMIZE TO WORKSPACE</span>
+            </button>
+          </div>
+
+          {/* Full Screen Live Voice Session (Identical to /test-avatar) */}
+          <div style={{ flex: 1, width: "100%", height: "100%", position: "relative" }}>
+            <VoiceSession
+              domain={domain}
+              problemTitle={`Scope ${domain.toUpperCase()} Interactive Simulation`}
+              scenario="Candidate live interactive workspace simulation with proactive 3D observer."
+              autoConnect={true}
+              initialEngine="live"
+              showAvatar={true}
+              compact={false}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

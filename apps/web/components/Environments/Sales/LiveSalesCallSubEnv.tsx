@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
-import type { VoiceSessionHandle } from "../../Avatar/VoiceSession";
+import { VoiceSession, type VoiceSessionHandle } from "../../Avatar/VoiceSession";
 
 // Dynamically import AvatarScene with SSR disabled to prevent Three.js canvas hydration mismatch
 const AvatarScene = dynamic(() => import("../../Avatar/AvatarScene"), {
@@ -138,6 +138,7 @@ export default function LiveSalesCallSubEnv({
   updateDealState,
   onNavigateToSubEnv,
 }: LiveSalesCallSubEnvProps) {
+  const [isObserverFullScreen, setIsObserverFullScreen] = useState(false);
   const [callDuration, setCallDuration] = useState(dealState.callDuration ?? 14);
   const [isMuted, setIsMuted] = useState(false);
   const [notes, setNotes] = useState(dealState.notes || "");
@@ -1147,6 +1148,33 @@ export default function LiveSalesCallSubEnv({
 
             <div style={{ height: 160, position: "relative" }}>
               <AvatarScene analyserNode={analyserNode || null} domain="sales" />
+
+              {/* Maximize to full-screen button */}
+              <button
+                onClick={() => setIsObserverFullScreen(true)}
+                style={{
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  background: "rgba(10, 15, 30, 0.8)",
+                  border: "1px solid #f59e0b",
+                  color: "#fde68a",
+                  padding: "3px 8px",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  backdropFilter: "blur(6px)",
+                  zIndex: 10,
+                }}
+                title="Maximize 3D Observer to Full Screen with Live Voice"
+              >
+                <span>⛶</span>
+                <span>MAXIMIZE FULL SCREEN</span>
+              </button>
             </div>
 
             {/* Heuristic Evaluation Telemetry */}
@@ -1297,6 +1325,102 @@ export default function LiveSalesCallSubEnv({
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Full-Screen Immersive 3D Observer Live Overlay (Matching /test-avatar) */}
+      {isObserverFullScreen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "#080603",
+            zIndex: 99999,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* Top Bar with Status and Minimize Button */}
+          <div
+            style={{
+              position: "absolute",
+              top: 20,
+              left: 24,
+              right: 24,
+              zIndex: 100,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              pointerEvents: "none",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                background: "rgba(5, 8, 16, 0.85)",
+                border: "1px solid rgba(245, 158, 11, 0.4)",
+                padding: "8px 18px",
+                borderRadius: 24,
+                backdropFilter: "blur(12px)",
+                pointerEvents: "auto",
+                boxShadow: "0 0 15px rgba(245, 158, 11, 0.2)",
+              }}
+            >
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  background: "#f59e0b",
+                  boxShadow: "0 0 12px #f59e0b",
+                }}
+              />
+              <span style={{ fontSize: 12, fontWeight: 800, color: "#f59e0b", letterSpacing: "1px" }}>
+                3D OBSERVER LIVE // FULL SCREEN
+              </span>
+            </div>
+
+            <button
+              onClick={() => setIsObserverFullScreen(false)}
+              style={{
+                background: "rgba(15, 23, 42, 0.9)",
+                border: "1px solid rgba(255, 255, 255, 0.25)",
+                color: "#f8fafc",
+                padding: "8px 18px",
+                borderRadius: 24,
+                cursor: "pointer",
+                fontSize: 12,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                backdropFilter: "blur(12px)",
+                pointerEvents: "auto",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.7)",
+              }}
+            >
+              <span style={{ color: "#ef4444", fontWeight: 900 }}>✕</span>
+              <span>MINIMIZE TO WORKSPACE</span>
+            </button>
+          </div>
+
+          {/* Full Screen Live Voice Session (Identical to /test-avatar) */}
+          <div style={{ flex: 1, width: "100%", height: "100%", position: "relative" }}>
+            <VoiceSession
+              domain="sales"
+              problemTitle="Scope 2 Sales: High-Stakes Renewal Objection Handling"
+              scenario="Sam Jenkins from Nordic Goods is threatening not to renew their $250k contract due to Black Friday downtime risks."
+              autoConnect={true}
+              initialEngine="live"
+              showAvatar={true}
+              compact={false}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

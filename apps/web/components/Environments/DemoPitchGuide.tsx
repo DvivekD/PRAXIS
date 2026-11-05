@@ -81,7 +81,7 @@ export default function DemoPitchGuide({ domain, onQuickSolve }: DemoPitchGuideP
   const info = DOMAIN_HINTS[domain] || DOMAIN_HINTS.engineering;
 
   return (
-    <div style={{ position: "fixed", top: 18, right: 74, zIndex: 9998, fontFamily: "'JetBrains Mono', monospace" }}>
+    <div style={{ position: "fixed", bottom: 16, left: 16, zIndex: 9998, fontFamily: "'JetBrains Mono', monospace" }}>
       <motion.button
         whileHover={{ scale: 1.03, borderColor: "#f59e0b" }}
         whileTap={{ scale: 0.97 }}
@@ -113,14 +113,14 @@ export default function DemoPitchGuide({ domain, onQuickSolve }: DemoPitchGuideP
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.96 }}
+            initial={{ opacity: 0, y: 10, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.96 }}
+            exit={{ opacity: 0, y: 10, scale: 0.96 }}
             transition={{ duration: 0.15 }}
             style={{
               position: "absolute",
-              top: 40,
-              right: 0,
+              bottom: 40,
+              left: 0,
               width: 380,
               maxHeight: "calc(100vh - 80px)",
               overflowY: "auto",

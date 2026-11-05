@@ -50,6 +50,7 @@ export default function DataWorkspaceEnvironment({
   // 3D Observer HUD visibility & Voice Session
   const [showObserverHud, setShowObserverHud] = useState(true);
   const [isObserverExpanded, setIsObserverExpanded] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const [observerMode, setObserverMode] = useState<VoiceSessionMode>("guide");
   const voiceSessionRef = useRef<VoiceSessionHandle>(null);
 
@@ -395,124 +396,33 @@ export default function DataWorkspaceEnvironment({
                   domain="data"
                   onInteract={handleObserverCoreInteraction}
                 />
-              </div>
 
-              {/* 2-Way Voice Agent Live Control Panel */}
-              <div
-                style={{
-                  padding: "10px 14px",
-                  background: "#050814",
-                  borderBottom: "1px solid rgba(6, 182, 212, 0.2)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>
-                    2-Way Voice Observer
-                  </span>
-                  <button
-                    onClick={() => {
-                      const next: VoiceSessionMode = observerMode === "interviewer" ? "guide" : "interviewer";
-                      setObserverMode(next);
-                      voiceSessionRef.current?.setMode(next);
-                    }}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      padding: "3px 8px",
-                      background: observerMode === "interviewer" ? "rgba(239, 68, 68, 0.2)" : "rgba(6, 182, 212, 0.2)",
-                      border: `1px solid ${observerMode === "interviewer" ? "#ef4444" : "#06b6d4"}`,
-                      borderRadius: 12,
-                      color: observerMode === "interviewer" ? "#fca5a5" : "#67e8f9",
-                      fontSize: 10,
-                      fontFamily: "monospace",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {observerMode === "interviewer" ? "🎯 INTERVIEWER MODE" : "🛠️ CO-PILOT MODE"}
-                  </button>
-                </div>
-
-                <div style={{ height: 175, position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(6, 182, 212, 0.2)" }}>
-                  <VoiceSession
-                    ref={voiceSessionRef}
-                    mode={observerMode}
-                    domain="data"
-                    problemTitle="Scope 4 Data: The Missing DAU Problem (-18% Anomaly)"
-                    scenario="Daily active users dropped 18% on Nov 04 while ingress was normal. Repair SQL inner join and Airflow pipeline schema drift."
-                    autoConnect={isObserverExpanded}
-                    initialEngine="fallback"
-                    showAvatar={false}
-                    compact={true}
-                  />
-                </div>
-
-                {/* Quick Socratic / Technical Doubts Pills */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  <button
-                    onClick={() => {
-                      voiceSessionRef.current?.speakProactiveContext(
-                        "Why is the DAU query undercounting daily active users?"
-                      );
-                    }}
-                    style={{
-                      fontSize: 10,
-                      color: "#94a3b8",
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      padding: "3px 8px",
-                      borderRadius: 4,
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                    }}
-                  >
-                    💡 Why is DAU undercounting users?
-                  </button>
-                  <button
-                    onClick={() => {
-                      voiceSessionRef.current?.speakProactiveContext(
-                        "Explain schema drift between account_uid and user_id in the pipeline."
-                      );
-                    }}
-                    style={{
-                      fontSize: 10,
-                      color: "#94a3b8",
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      padding: "3px 8px",
-                      borderRadius: 4,
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                    }}
-                  >
-                    ❓ Explain schema drift in ETL pipeline
-                  </button>
-                  <button
-                    onClick={() => {
-                      setObserverMode("interviewer");
-                      voiceSessionRef.current?.setMode("interviewer");
-                      voiceSessionRef.current?.speakProactiveContext(
-                        "Grill me on my data pipeline architecture and metric validation approach."
-                      );
-                    }}
-                    style={{
-                      fontSize: 10,
-                      color: "#fca5a5",
-                      background: "rgba(239,68,68,0.1)",
-                      border: "1px solid rgba(239,68,68,0.3)",
-                      padding: "3px 8px",
-                      borderRadius: 4,
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                    }}
-                  >
-                    🎯 Grill me on data architecture & ETL
-                  </button>
-                </div>
+                {/* Maximize to full-screen button */}
+                <button
+                  onClick={() => setIsFullScreen(true)}
+                  style={{
+                    position: "absolute",
+                    top: 8,
+                    right: 8,
+                    background: "rgba(10, 15, 30, 0.8)",
+                    border: "1px solid #06b6d4",
+                    color: "#67e8f9",
+                    padding: "3px 8px",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    backdropFilter: "blur(6px)",
+                    zIndex: 10,
+                  }}
+                  title="Maximize 3D Observer to Full Screen with Live Voice"
+                >
+                  <span>⛶</span>
+                  <span>MAXIMIZE FULL SCREEN</span>
+                </button>
               </div>
 
               {/* Observer Diagnostics & Signals */}
@@ -585,7 +495,7 @@ export default function DataWorkspaceEnvironment({
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          onClick={() => setIsObserverExpanded(true)}
+          onClick={() => setIsFullScreen(true)}
           style={{
             position: "absolute",
             bottom: 18,
@@ -602,6 +512,7 @@ export default function DataWorkspaceEnvironment({
             backdropFilter: "blur(8px)",
             zIndex: 30,
           }}
+          title="Click to maximize 3D Observer to Full Screen with Live Voice"
         >
           <span style={{ position: "relative", display: "flex", height: 8, width: 8 }}>
             <span
@@ -628,9 +539,105 @@ export default function DataWorkspaceEnvironment({
             />
           </span>
           <span style={{ fontSize: 10, color: "#38bdf8", fontWeight: 700 }}>
-            3D OBSERVER ACTIVE ({cognitiveLoad}%)
+            3D OBSERVER LIVE ({cognitiveLoad}%)
           </span>
         </motion.div>
+      )}
+
+      {/* Full-Screen Immersive 3D Observer Live Overlay (Matching /test-avatar) */}
+      {isFullScreen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "#050814",
+            zIndex: 99999,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* Top Bar with Status and Minimize Button */}
+          <div
+            style={{
+              position: "absolute",
+              top: 20,
+              left: 24,
+              right: 24,
+              zIndex: 100,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              pointerEvents: "none",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                background: "rgba(5, 8, 16, 0.85)",
+                border: "1px solid rgba(6, 182, 212, 0.4)",
+                padding: "8px 18px",
+                borderRadius: 24,
+                backdropFilter: "blur(12px)",
+                pointerEvents: "auto",
+                boxShadow: "0 0 15px rgba(6, 182, 212, 0.2)",
+              }}
+            >
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  background: "#06b6d4",
+                  boxShadow: "0 0 12px #06b6d4",
+                }}
+              />
+              <span style={{ fontSize: 12, fontWeight: 800, color: "#06b6d4", letterSpacing: "1px" }}>
+                3D OBSERVER LIVE // FULL SCREEN
+              </span>
+            </div>
+
+            <button
+              onClick={() => setIsFullScreen(false)}
+              style={{
+                background: "rgba(15, 23, 42, 0.9)",
+                border: "1px solid rgba(255, 255, 255, 0.25)",
+                color: "#f8fafc",
+                padding: "8px 18px",
+                borderRadius: 24,
+                cursor: "pointer",
+                fontSize: 12,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                backdropFilter: "blur(12px)",
+                pointerEvents: "auto",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.7)",
+              }}
+            >
+              <span style={{ color: "#ef4444", fontWeight: 900 }}>✕</span>
+              <span>MINIMIZE TO WORKSPACE</span>
+            </button>
+          </div>
+
+          {/* Full Screen Live Voice Session (Identical to /test-avatar) */}
+          <div style={{ flex: 1, width: "100%", height: "100%", position: "relative" }}>
+            <VoiceSession
+              domain="data"
+              problemTitle="Scope 4 Data: The Missing DAU Problem (-18% Anomaly)"
+              scenario="Daily active users dropped 18% on Nov 04 while ingress was normal. Repair SQL inner join and Airflow pipeline schema drift."
+              autoConnect={true}
+              initialEngine="live"
+              showAvatar={true}
+              compact={false}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

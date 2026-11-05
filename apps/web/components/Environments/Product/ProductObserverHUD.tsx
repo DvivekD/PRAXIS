@@ -23,6 +23,7 @@ export default function ProductObserverHUD({
   signals = {},
 }: ProductObserverHUDProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const [observerMode, setObserverMode] = useState<VoiceSessionMode>("guide");
   const voiceSessionRef = useRef<VoiceSessionHandle>(null);
 
@@ -84,6 +85,34 @@ export default function ProductObserverHUD({
           {/* 3D Canvas Container */}
           <div style={{ width: "100%", height: 190, position: "relative", background: "#05070d", flexShrink: 0 }}>
             <AvatarScene analyserNode={null} domain="product" />
+            
+            {/* Maximize to full-screen button */}
+            <button
+              onClick={() => setIsFullScreen(true)}
+              style={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                background: "rgba(10, 15, 30, 0.8)",
+                border: "1px solid #818cf8",
+                color: "#c7d2fe",
+                padding: "3px 8px",
+                borderRadius: 4,
+                cursor: "pointer",
+                fontSize: 10,
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                backdropFilter: "blur(6px)",
+                zIndex: 10,
+              }}
+              title="Maximize 3D Observer to Full Screen with Live Voice"
+            >
+              <span>⛶</span>
+              <span>MAXIMIZE FULL SCREEN</span>
+            </button>
+
             <div
               style={{
                 position: "absolute",
@@ -95,124 +124,6 @@ export default function ProductObserverHUD({
               }}
             >
               DRAG TO ORBIT // 3D DUAL-TORUS CORE
-            </div>
-          </div>
-
-          {/* 2-Way Voice Agent Live Control Panel */}
-          <div
-            style={{
-              padding: "10px 14px",
-              background: "#050814",
-              borderBottom: "1px solid rgba(129, 140, 248, 0.2)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>
-                2-Way Voice Observer
-              </span>
-              <button
-                onClick={() => {
-                  const next: VoiceSessionMode = observerMode === "interviewer" ? "guide" : "interviewer";
-                  setObserverMode(next);
-                  voiceSessionRef.current?.setMode(next);
-                }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                  padding: "3px 8px",
-                  background: observerMode === "interviewer" ? "rgba(239, 68, 68, 0.2)" : "rgba(129, 140, 248, 0.2)",
-                  border: `1px solid ${observerMode === "interviewer" ? "#ef4444" : "#818cf8"}`,
-                  borderRadius: 12,
-                  color: observerMode === "interviewer" ? "#fca5a5" : "#c7d2fe",
-                  fontSize: 10,
-                  fontFamily: "monospace",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                {observerMode === "interviewer" ? "🎯 INTERVIEWER MODE" : "🛠️ CO-PILOT MODE"}
-              </button>
-            </div>
-
-            <div style={{ height: 175, position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(129, 140, 248, 0.2)" }}>
-              <VoiceSession
-                ref={voiceSessionRef}
-                mode={observerMode}
-                domain="product"
-                problemTitle="Scope 3 Product: Black Friday Launch Triage"
-                scenario="Triage 5 crisis emails: Sev-1 checkout double charges, VIP merchant churn, deployment freezes vs marketing blasts"
-                autoConnect={isExpanded}
-                initialEngine="fallback"
-                showAvatar={false}
-                compact={true}
-              />
-            </div>
-
-            {/* Quick Socratic / Technical Doubts Pills */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              <button
-                onClick={() => {
-                  voiceSessionRef.current?.speakProactiveContext(
-                    "Should we hold the deployment for gift cards to focus on the checkout bug?"
-                  );
-                }}
-                style={{
-                  fontSize: 10,
-                  color: "#94a3b8",
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  padding: "3px 8px",
-                  borderRadius: 4,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                💡 Should we freeze deployments?
-              </button>
-              <button
-                onClick={() => {
-                  voiceSessionRef.current?.speakProactiveContext(
-                    "What is causing the 42.8% checkout drop-off on iOS Safari?"
-                  );
-                }}
-                style={{
-                  fontSize: 10,
-                  color: "#94a3b8",
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  padding: "3px 8px",
-                  borderRadius: 4,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                ❓ Explain iOS checkout drop-off
-              </button>
-              <button
-                onClick={() => {
-                  setObserverMode("interviewer");
-                  voiceSessionRef.current?.setMode("interviewer");
-                  voiceSessionRef.current?.speakProactiveContext(
-                    "Grill me on how I am prioritizing these 5 competing stakeholder requests."
-                  );
-                }}
-                style={{
-                  fontSize: 10,
-                  color: "#fca5a5",
-                  background: "rgba(239,68,68,0.1)",
-                  border: "1px solid rgba(239,68,68,0.3)",
-                  padding: "3px 8px",
-                  borderRadius: 4,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                🎯 Grill me on prioritization trade-offs
-              </button>
             </div>
           </div>
 
@@ -298,7 +209,7 @@ export default function ProductObserverHUD({
       ) : (
         /* Collapsed Mode Sidebar with Miniature 3D Avatar Orb */
         <div
-          onClick={() => setIsExpanded(true)}
+          onClick={() => setIsFullScreen(true)}
           style={{
             flex: 1,
             display: "flex",
@@ -309,7 +220,7 @@ export default function ProductObserverHUD({
             cursor: "pointer",
             background: "#080a12",
           }}
-          title="Click to expand 3D Observer & start voice dialogue"
+          title="Click to maximize 3D Observer to Full Screen with Live Voice"
         >
           <div
             style={{
@@ -337,7 +248,7 @@ export default function ProductObserverHUD({
               whiteSpace: "nowrap",
             }}
           >
-            3D OBSERVER [TALK]
+            3D OBSERVER [LIVE]
           </div>
 
           <div
@@ -351,6 +262,102 @@ export default function ProductObserverHUD({
             }}
           >
             {cognitiveLoad}%
+          </div>
+        </div>
+      )}
+
+      {/* Full-Screen Immersive 3D Observer Live Overlay (Matching /test-avatar) */}
+      {isFullScreen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "#05070d",
+            zIndex: 99999,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* Top Bar with Status and Minimize Button */}
+          <div
+            style={{
+              position: "absolute",
+              top: 20,
+              left: 24,
+              right: 24,
+              zIndex: 100,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              pointerEvents: "none",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                background: "rgba(5, 8, 16, 0.85)",
+                border: "1px solid rgba(129, 140, 248, 0.4)",
+                padding: "8px 18px",
+                borderRadius: 24,
+                backdropFilter: "blur(12px)",
+                pointerEvents: "auto",
+                boxShadow: "0 0 15px rgba(129, 140, 248, 0.2)",
+              }}
+            >
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  background: "#818cf8",
+                  boxShadow: "0 0 12px #818cf8",
+                }}
+              />
+              <span style={{ fontSize: 12, fontWeight: 800, color: "#818cf8", letterSpacing: "1px" }}>
+                3D OBSERVER LIVE // FULL SCREEN
+              </span>
+            </div>
+
+            <button
+              onClick={() => setIsFullScreen(false)}
+              style={{
+                background: "rgba(15, 23, 42, 0.9)",
+                border: "1px solid rgba(255, 255, 255, 0.25)",
+                color: "#f8fafc",
+                padding: "8px 18px",
+                borderRadius: 24,
+                cursor: "pointer",
+                fontSize: 12,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                backdropFilter: "blur(12px)",
+                pointerEvents: "auto",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.7)",
+              }}
+            >
+              <span style={{ color: "#ef4444", fontWeight: 900 }}>✕</span>
+              <span>MINIMIZE TO WORKSPACE</span>
+            </button>
+          </div>
+
+          {/* Full Screen Live Voice Session (Identical to /test-avatar) */}
+          <div style={{ flex: 1, width: "100%", height: "100%", position: "relative" }}>
+            <VoiceSession
+              domain="product"
+              problemTitle="Scope 3 Product: Black Friday Launch Triage"
+              scenario="Triage 5 crisis emails: Sev-1 checkout double charges, VIP merchant churn, deployment freezes vs marketing blasts"
+              autoConnect={true}
+              initialEngine="live"
+              showAvatar={true}
+              compact={false}
+            />
           </div>
         </div>
       )}

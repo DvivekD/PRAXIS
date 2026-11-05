@@ -33,6 +33,7 @@ export default function ObserverHUD({
   scenario = "Aura Commerce Black Friday outage investigation and race condition repair",
 }: ObserverHUDProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const [observerMode, setObserverMode] = useState<VoiceSessionMode>("guide");
   const [simulatedCognitive, setSimulatedCognitive] = useState(cognitiveLoad);
   const voiceSessionRef = useRef<VoiceSessionHandle>(null);
@@ -195,6 +196,34 @@ export default function ObserverHUD({
               <span>CORE_ENGAGEMENT</span>
             </div>
 
+            {/* Maximize Full Screen Button */}
+            <button
+              onClick={() => setIsFullScreen(true)}
+              style={{
+                position: "absolute",
+                top: 10,
+                right: 12,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                background: "rgba(0, 255, 65, 0.15)",
+                border: "1px solid rgba(0, 255, 65, 0.5)",
+                padding: "4px 10px",
+                borderRadius: 20,
+                fontSize: 10,
+                color: "#00ff41",
+                cursor: "pointer",
+                fontWeight: 700,
+                backdropFilter: "blur(6px)",
+                fontFamily: "inherit",
+                boxShadow: "0 0 10px rgba(0, 255, 65, 0.2)",
+              }}
+              title="Maximize 3D Observer to Full Screen (Talk Live)"
+            >
+              <span>⛶</span>
+              <span>MAXIMIZE FULL SCREEN</span>
+            </button>
+
             <div
               style={{
                 position: "absolute",
@@ -208,124 +237,6 @@ export default function ObserverHUD({
               }}
             >
               ORBIT / ZOOM ENABLED
-            </div>
-          </div>
-
-          {/* 2-Way Voice Agent Live Control Panel */}
-          <div
-            style={{
-              padding: "10px 14px",
-              background: "#050811",
-              borderBottom: "1px solid #1e293b",
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}>
-                2-Way Voice Observer
-              </span>
-              <button
-                onClick={() => {
-                  const next: VoiceSessionMode = observerMode === "interviewer" ? "guide" : "interviewer";
-                  setObserverMode(next);
-                  voiceSessionRef.current?.setMode(next);
-                }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                  padding: "3px 8px",
-                  background: observerMode === "interviewer" ? "rgba(239, 68, 68, 0.2)" : "rgba(16, 185, 129, 0.2)",
-                  border: `1px solid ${observerMode === "interviewer" ? "#ef4444" : "#10b981"}`,
-                  borderRadius: 12,
-                  color: observerMode === "interviewer" ? "#fca5a5" : "#6ee7b7",
-                  fontSize: 10,
-                  fontFamily: "monospace",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                {observerMode === "interviewer" ? "🎯 INTERVIEWER MODE" : "🛠️ CO-PILOT MODE"}
-              </button>
-            </div>
-
-            <div style={{ height: 175, position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid #1e293b" }}>
-              <VoiceSession
-                ref={voiceSessionRef}
-                mode={observerMode}
-                domain={domain}
-                problemTitle={problemTitle}
-                scenario={scenario}
-                autoConnect={isExpanded}
-                initialEngine="fallback"
-                showAvatar={false}
-                compact={true}
-              />
-            </div>
-
-            {/* Quick Clue & Technical Doubts Prompts */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              <button
-                onClick={() => {
-                  voiceSessionRef.current?.speakProactiveContext(
-                    "Where is the race condition in the checkout service?"
-                  );
-                }}
-                style={{
-                  fontSize: 10,
-                  color: "#94a3b8",
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  padding: "3px 8px",
-                  borderRadius: 4,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                💡 Where is order lock contention?
-              </button>
-              <button
-                onClick={() => {
-                  voiceSessionRef.current?.speakProactiveContext(
-                    "Why is CoreDNS failing on port 8443 for auth.payment.internal?"
-                  );
-                }}
-                style={{
-                  fontSize: 10,
-                  color: "#94a3b8",
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  padding: "3px 8px",
-                  borderRadius: 4,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                ❓ Explain DNS 10.244.3.99 failure
-              </button>
-              <button
-                onClick={() => {
-                  setObserverMode("interviewer");
-                  voiceSessionRef.current?.setMode("interviewer");
-                  voiceSessionRef.current?.speakProactiveContext(
-                    "Grill me on my architectural approach to fixing this race condition."
-                  );
-                }}
-                style={{
-                  fontSize: 10,
-                  color: "#fca5a5",
-                  background: "rgba(239,68,68,0.1)",
-                  border: "1px solid rgba(239,68,68,0.3)",
-                  padding: "3px 8px",
-                  borderRadius: 4,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                🎯 Grill me on this concurrency fix
-              </button>
             </div>
           </div>
 
@@ -632,8 +543,8 @@ export default function ObserverHUD({
             gap: 16,
             cursor: "pointer",
           }}
-          onClick={() => setIsExpanded(true)}
-          title="Click 3D Observer to Expand & Talk"
+          onClick={() => setIsFullScreen(true)}
+          title="Click to Maximize 3D Observer to Full Screen (Talk Live)"
         >
           <div
             style={{
@@ -660,7 +571,7 @@ export default function ObserverHUD({
               letterSpacing: "2px",
             }}
           >
-            3D OBSERVER [TALK]
+            3D OBSERVER [LIVE]
           </div>
 
           <div
@@ -674,6 +585,102 @@ export default function ObserverHUD({
             }}
           >
             {simulatedCognitive}%
+          </div>
+        </div>
+      )}
+
+      {/* Full-Screen Immersive 3D Observer (Matching /test-avatar Live WebSocket) */}
+      {isFullScreen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            width: "100vw",
+            height: "100vh",
+            zIndex: 99999,
+            backgroundColor: "#010204",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* Top Bar with Live Tag & Minimize Button */}
+          <div
+            style={{
+              position: "absolute",
+              top: 20,
+              left: 24,
+              right: 24,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              zIndex: 100000,
+              pointerEvents: "none",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                background: "rgba(5, 8, 16, 0.85)",
+                border: "1px solid rgba(0, 255, 65, 0.4)",
+                padding: "8px 18px",
+                borderRadius: 24,
+                backdropFilter: "blur(12px)",
+                pointerEvents: "auto",
+                boxShadow: "0 0 15px rgba(0, 255, 65, 0.2)",
+              }}
+            >
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  background: "#00ff41",
+                  boxShadow: "0 0 12px #00ff41",
+                }}
+              />
+              <span style={{ fontSize: 12, fontWeight: 800, color: "#00ff41", letterSpacing: "1px" }}>
+                3D OBSERVER LIVE // FULL SCREEN
+              </span>
+            </div>
+
+            <button
+              onClick={() => setIsFullScreen(false)}
+              style={{
+                background: "rgba(15, 23, 42, 0.9)",
+                border: "1px solid rgba(255, 255, 255, 0.25)",
+                color: "#f8fafc",
+                padding: "8px 18px",
+                borderRadius: 24,
+                cursor: "pointer",
+                fontSize: 12,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                backdropFilter: "blur(12px)",
+                pointerEvents: "auto",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.7)",
+              }}
+            >
+              <span style={{ color: "#ef4444", fontWeight: 900 }}>✕</span>
+              <span>MINIMIZE TO WORKSPACE</span>
+            </button>
+          </div>
+
+          {/* Full Screen Live Voice Session (Identical to /test-avatar) */}
+          <div style={{ flex: 1, width: "100%", height: "100%", position: "relative" }}>
+            <VoiceSession
+              domain={domain}
+              problemTitle={problemTitle}
+              scenario={scenario}
+              autoConnect={true}
+              initialEngine="live"
+              showAvatar={true}
+              compact={false}
+            />
           </div>
         </div>
       )}

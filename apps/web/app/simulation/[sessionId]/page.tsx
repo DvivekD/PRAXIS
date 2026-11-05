@@ -371,8 +371,8 @@ function SimulationContent() {
       {/* Primary Immersive Work Environment */}
       {renderDomainEnvironment()}
 
-      {/* 3D Observer Avatar Scene (Three.js WebGL reactive core) - only when not embedded in domain HUD */}
-      {domain !== "engineering" && domain !== "sre" && (
+      {/* 3D Observer Avatar Scene (Three.js WebGL reactive core) - only fallback if a domain lacks dedicated HUD */}
+      {!["engineering", "sre", "product", "sales", "data", "support", "brand"].includes(domain) && (
         <ObserverWidget
           domain={domain}
           analyserNode={analyserNode}

@@ -18,6 +18,7 @@ import {
   submitSreTelemetryAction,
   executeSreRollbackAction,
 } from "../../actions/eval";
+import { VoiceSession } from "../Avatar/VoiceSession";
 
 // Dynamically import AvatarScene with SSR disabled for Three.js / Canvas safety
 const AvatarScene = dynamic(() => import("../Avatar/AvatarScene"), { ssr: false });
@@ -90,6 +91,7 @@ export default function WarRoomEnvironment({
   // Navigation: 3 Sub-Environments
   const [activeSubEnv, setActiveSubEnv] = useState<"01" | "02" | "03">(getSubKey(initialSubEnv || 2));
   const [showObserverHud, setShowObserverHud] = useState(true);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   useEffect(() => {
     if (initialSubEnv) setActiveSubEnv(getSubKey(initialSubEnv));
@@ -848,6 +850,33 @@ export default function WarRoomEnvironment({
                   domain="sre"
                   onInteract={(act) => onAction(act)}
                 />
+
+                {/* Maximize to full-screen button */}
+                <button
+                  onClick={() => setIsFullScreen(true)}
+                  style={{
+                    position: "absolute",
+                    top: 8,
+                    right: 8,
+                    background: "rgba(10, 15, 30, 0.8)",
+                    border: "1px solid #38bdf8",
+                    color: "#7dd3fc",
+                    padding: "3px 8px",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    backdropFilter: "blur(6px)",
+                    zIndex: 10,
+                  }}
+                  title="Maximize 3D Observer to Full Screen with Live Voice"
+                >
+                  <span>⛶</span>
+                  <span>MAXIMIZE FULL SCREEN</span>
+                </button>
               </div>
 
               {/* Real-time Telemetry & Cognitive Heuristics Feed */}
@@ -908,6 +937,102 @@ export default function WarRoomEnvironment({
           )}
         </AnimatePresence>
       </div>
+
+      {/* Full-Screen Immersive 3D Observer Live Overlay (Matching /test-avatar) */}
+      {isFullScreen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "#04060b",
+            zIndex: 99999,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* Top Bar with Status and Minimize Button */}
+          <div
+            style={{
+              position: "absolute",
+              top: 20,
+              left: 24,
+              right: 24,
+              zIndex: 100,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              pointerEvents: "none",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                background: "rgba(5, 8, 16, 0.85)",
+                border: "1px solid rgba(56, 189, 248, 0.4)",
+                padding: "8px 18px",
+                borderRadius: 24,
+                backdropFilter: "blur(12px)",
+                pointerEvents: "auto",
+                boxShadow: "0 0 15px rgba(56, 189, 248, 0.2)",
+              }}
+            >
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  background: "#38bdf8",
+                  boxShadow: "0 0 12px #38bdf8",
+                }}
+              />
+              <span style={{ fontSize: 12, fontWeight: 800, color: "#38bdf8", letterSpacing: "1px" }}>
+                3D OBSERVER LIVE // FULL SCREEN
+              </span>
+            </div>
+
+            <button
+              onClick={() => setIsFullScreen(false)}
+              style={{
+                background: "rgba(15, 23, 42, 0.9)",
+                border: "1px solid rgba(255, 255, 255, 0.25)",
+                color: "#f8fafc",
+                padding: "8px 18px",
+                borderRadius: 24,
+                cursor: "pointer",
+                fontSize: 12,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                backdropFilter: "blur(12px)",
+                pointerEvents: "auto",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.7)",
+              }}
+            >
+              <span style={{ color: "#ef4444", fontWeight: 900 }}>✕</span>
+              <span>MINIMIZE TO WORKSPACE</span>
+            </button>
+          </div>
+
+          {/* Full Screen Live Voice Session (Identical to /test-avatar) */}
+          <div style={{ flex: 1, width: "100%", height: "100%", position: "relative" }}>
+            <VoiceSession
+              domain="sre"
+              problemTitle="Scope 5 SRE: Aura Commerce Black Friday Outage War Room"
+              scenario="Sev-1 Outage: 42.8% error rate on checkout. Diagnose 504 timeouts, coordinate cross-functional mitigation, rollback flawed commit."
+              autoConnect={true}
+              initialEngine="live"
+              showAvatar={true}
+              compact={false}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
