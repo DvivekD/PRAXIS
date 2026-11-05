@@ -189,8 +189,25 @@ function SimulationContent() {
 
   // 6. Initialize session from localStorage
   useEffect(() => {
-    if (!sessionId) return;
     try {
+      if (sessionId?.startsWith("custom-") || searchParams?.get("customProblem") === "1") {
+        const customActive = localStorage.getItem("praxis_active_custom_problem");
+        if (customActive) {
+          const customObj = JSON.parse(customActive);
+          if (customObj.redefinedTitle) setProblemTitle(customObj.redefinedTitle);
+          if (customObj.incidentOverview) setScenarioDesc(customObj.incidentOverview);
+          if (customObj.observerPersonaPrompt) {
+            setActivePerson({
+              name: (customObj.companyName || "Nordic Goods") + " SRE",
+              role: "Incident Commander",
+              escalation: 0,
+            });
+          }
+          return;
+        }
+      }
+
+      if (!sessionId) return;
       const stored = localStorage.getItem(`praxis_session_${sessionId}`);
       if (stored) {
         const state = JSON.parse(stored);
@@ -204,7 +221,7 @@ function SimulationContent() {
     } catch (e) {
       console.warn("[PRAXIS] Failed to parse stored state:", e);
     }
-  }, [sessionId]);
+  }, [sessionId, searchParams]);
 
   // ─── OPTIONAL BOOT SCREEN WITH TOTAL NULL SAFETY ───
   if (bootPhase >= 0) {

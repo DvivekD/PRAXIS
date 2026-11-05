@@ -6,8 +6,7 @@ import { motion } from "framer-motion";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Line } from "@react-three/drei";
 import * as THREE from "three";
-// Commenting out backend calls to force mock bypass
-// import { getCompanyProblemsAction, createProblemAction, getCompanyPipelineAction } from "../../../actions/company";
+import { redefineCompanyProblemAction, type RedefinedCompanyProblem } from "../../../actions/company";
 
 // Hardcoded mock functions for full bypass
 function getMockCompanyProblems(companyId: string) {
@@ -88,11 +87,15 @@ export default function CompanyDashboard() {
   const [pipeline, setPipeline] = useState<any[]>([]);
 
   // Problem Form State
+  const [companyName, setCompanyName] = useState("Nordic Goods");
   const [domain, setDomain] = useState("engineering");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [setupCode, setSetupCode] = useState("");
   const [agentPrompt, setAgentPrompt] = useState("");
+  const [isMutating, setIsMutating] = useState(false);
+  const [lastMutatedProblem, setLastMutatedProblem] = useState<RedefinedCompanyProblem | null>(null);
+  const [publishSuccess, setPublishSuccess] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -102,7 +105,20 @@ export default function CompanyDashboard() {
 
       if (activeTab === "problems") {
         const res = getMockCompanyProblems(companyId);
-        if (res.success) setProblems(res.problems || []);
+        let baseProblems = res.success ? (res.problems || []) : [];
+        try {
+          const custom = JSON.parse(localStorage.getItem("praxis_custom_company_problems") || "[]");
+          if (custom.length > 0) {
+            const mapped = custom.map((c: any) => ({
+              id: c.id,
+              title: c.redefinedTitle || c.rawTitle,
+              domain: c.domain,
+              description: c.incidentOverview || c.rawDescription,
+            }));
+            baseProblems = [...mapped, ...baseProblems];
+          }
+        } catch {}
+        setProblems(baseProblems);
       } else if (activeTab === "pipeline") {
         const res = getMockCompanyPipeline(companyId);
         if (res.success) setPipeline(res.pipeline || []);
@@ -111,18 +127,58 @@ export default function CompanyDashboard() {
     loadData();
   }, [activeTab]);
 
-  const handleCreateProblem = async () => {
-    // Just mock it directly instead of backend
-    const mockProblem = {
-      id: "mock-" + Date.now(),
-      domain, title, description, setupCode, agentPrompt
-    };
+  const handleAutoFillPreset = () => {
+    setCompanyName("Nordic Goods");
+    setDomain("engineering");
+    setTitle("Mobile 3DS Checkout Timeout");
+    setDescription("During peak Black Friday mobile checkout, customers on iOS Safari get stuck on a blank 3D Secure verification modal. The payment gateway webhook never fires, and after 60 seconds the worker thread hangs with a 504 error, costing us thousands in lost sales.");
+  };
 
-    setProblems([mockProblem, ...problems]);
-    setTitle("");
-    setDescription("");
-    setSetupCode("");
-    setAgentPrompt("");
+  const handleCreateProblem = async () => {
+    const rawTitle = title.trim() || "Mobile 3DS Checkout Timeout";
+    const rawDesc = description.trim() || "During peak checkout, 3DS authentication hangs and drops shopper sessions.";
+
+    setIsMutating(true);
+    setPublishSuccess(false);
+
+    try {
+      const res = await redefineCompanyProblemAction({
+        companyName,
+        rawTitle,
+        domain,
+        rawDescription: rawDesc,
+      });
+
+      if (res.success && res.problem) {
+        setLastMutatedProblem(res.problem);
+        setPublishSuccess(true);
+
+        // Sync to browser localStorage for instant seeker portal access
+        try {
+          const existing = JSON.parse(localStorage.getItem("praxis_custom_company_problems") || "[]");
+          const updated = [res.problem, ...existing.filter((p: any) => p.id !== res.problem.id)];
+          localStorage.setItem("praxis_custom_company_problems", JSON.stringify(updated));
+          localStorage.setItem("praxis_active_custom_problem", JSON.stringify(res.problem));
+        } catch (storageErr) {
+          console.warn("[CompanyDashboard] Storage sync warning:", storageErr);
+        }
+
+        const mockProblem = {
+          id: res.problem.id,
+          domain: res.problem.domain,
+          title: res.problem.redefinedTitle,
+          description: res.problem.incidentOverview,
+          setupCode,
+          agentPrompt,
+        };
+
+        setProblems([mockProblem, ...problems]);
+      }
+    } catch (err) {
+      console.error("[CompanyDashboard] Problem generation error:", err);
+    } finally {
+      setIsMutating(false);
+    }
   };
 
   const mockModel = {
@@ -255,40 +311,117 @@ export default function CompanyDashboard() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
               {/* Form */}
               <div style={{ padding: 24, border: "1px solid #00ff41", background: "rgba(0,255,65,0.02)" }}>
-                <h2 style={{ fontSize: 18, color: "#00ff41", marginBottom: 20, fontFamily: "'JetBrains Mono', monospace" }}>AUTHOR_PROBLEM</h2>
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <h2 style={{ fontSize: 18, color: "#00ff41", margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>AUTHOR_PROBLEM // AI_MUTATOR</h2>
+                  <button
+                    onClick={handleAutoFillPreset}
+                    style={{
+                      background: "rgba(0,255,65,0.1)",
+                      border: "1px solid #00ff41",
+                      color: "#00ff41",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: "4px 8px",
+                      cursor: "pointer",
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    ⚡ AUTO-FILL NORDIC GOODS DEMO
+                  </button>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div>
+                    <label style={labelStyle}>Company Name</label>
+                    <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={inputStyle} placeholder="e.g. Nordic Goods, Acme Corp" />
+                  </div>
                   <div>
                     <label style={labelStyle}>Domain</label>
                     <select value={domain} onChange={(e) => setDomain(e.target.value)} style={inputStyle}>
-                      <option value="engineering">Engineering</option>
-                      <option value="sales">Sales</option>
-                      <option value="product">Product</option>
+                      <option value="engineering">Engineering // Infrastructure & Concurrency</option>
+                      <option value="sales">Sales // Enterprise Negotiation</option>
+                      <option value="product">Product // Launch Triage</option>
+                      <option value="data">Data // SQL & Pipeline Drift</option>
+                      <option value="support">Support // Customer Escalation</option>
+                      <option value="sre">SRE // Incident War Room</option>
                     </select>
                   </div>
                   <div>
-                    <label style={labelStyle}>Title</label>
-                    <input value={title} onChange={(e) => setTitle(e.target.value)} style={inputStyle} placeholder="e.g. Memory Leak in Worker" />
+                    <label style={labelStyle}>Raw Incident Title</label>
+                    <input value={title} onChange={(e) => setTitle(e.target.value)} style={inputStyle} placeholder="e.g. Mobile 3DS Checkout Timeout" />
                   </div>
                   <div>
-                    <label style={labelStyle}>Description (Scenario)</label>
-                    <textarea value={description} onChange={(e) => setDescription(e.target.value)} style={{ ...inputStyle, minHeight: 80 }} placeholder="Explain the problem context..." />
+                    <label style={labelStyle}>Raw Problem Context / Scenario</label>
+                    <textarea value={description} onChange={(e) => setDescription(e.target.value)} style={{ ...inputStyle, minHeight: 90 }} placeholder="Explain what went wrong in production..." />
                   </div>
 
-                  {domain === "engineering" ? (
-                    <div>
-                      <label style={labelStyle}>Setup Code (Buggy/Initial State)</label>
-                      <textarea value={setupCode} onChange={(e) => setSetupCode(e.target.value)} style={{ ...inputStyle, minHeight: 120 }} placeholder="function calculate() { ... }" />
-                    </div>
-                  ) : (
-                    <div>
-                      <label style={labelStyle}>Agent Prompt (Roleplay Instructions)</label>
-                      <textarea value={agentPrompt} onChange={(e) => setAgentPrompt(e.target.value)} style={{ ...inputStyle, minHeight: 120 }} placeholder="You are an angry client who wants a refund..." />
-                    </div>
-                  )}
-
-                  <button onClick={handleCreateProblem} style={{ padding: "12px 0", fontSize: 14, fontWeight: 700, color: "#080c14", background: "#00ff41", border: "none", cursor: "pointer", fontFamily: "'JetBrains Mono', monospace", marginTop: 8 }}>
-                    &gt; SAVE_PROBLEM
+                  <button
+                    onClick={handleCreateProblem}
+                    disabled={isMutating}
+                    style={{
+                      padding: "14px 0",
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: "#080c14",
+                      background: isMutating ? "rgba(0,255,65,0.4)" : "#00ff41",
+                      border: "none",
+                      cursor: isMutating ? "not-allowed" : "pointer",
+                      fontFamily: "'JetBrains Mono', monospace",
+                      marginTop: 4,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      boxShadow: "0 0 15px rgba(0,255,65,0.3)",
+                    }}
+                  >
+                    {isMutating ? "[ ⚡ AI PROCEDURALLY MUTATING INCIDENT... ]" : "[ > MUTATE & PUBLISH VIA AI ]"}
                   </button>
+
+                  {/* AI Generated Preview Banner */}
+                  {publishSuccess && lastMutatedProblem && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      style={{
+                        padding: 16,
+                        border: "1px solid #00ff41",
+                        background: "rgba(0,255,65,0.08)",
+                        marginTop: 10,
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <span style={{ fontSize: 11, color: "#00ff41", fontWeight: 800, fontFamily: "'JetBrains Mono', monospace" }}>
+                          ✓ AI_MUTATED // LIVE_ON_SEEKER_PORTAL
+                        </span>
+                        <span style={{ fontSize: 10, padding: "2px 6px", background: "#00ff41", color: "#000", fontWeight: 800 }}>
+                          {lastMutatedProblem.blastRadius}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: "#fff", marginBottom: 6 }}>
+                        {lastMutatedProblem.redefinedTitle}
+                      </div>
+                      <p style={{ fontSize: 12, color: "#a1a1aa", margin: "0 0 12px", lineHeight: 1.5 }}>
+                        {lastMutatedProblem.incidentOverview}
+                      </p>
+                      <button
+                        onClick={() => router.push("/select-domain")}
+                        style={{
+                          width: "100%",
+                          padding: "10px",
+                          background: "#0b101c",
+                          border: "1px solid #00ff41",
+                          color: "#00ff41",
+                          fontWeight: 700,
+                          fontSize: 12,
+                          cursor: "pointer",
+                          fontFamily: "'JetBrains Mono', monospace",
+                        }}
+                      >
+                        &gt; VIEW_ON_SEEKER_PORTAL ▶
+                      </button>
+                    </motion.div>
+                  )}
                 </div>
               </div>
 

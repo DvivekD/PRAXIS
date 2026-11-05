@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SCOPE_DEFINITIONS } from "../../lib/services/problemBank";
 
@@ -68,11 +68,54 @@ export default function SelectDomainPage() {
   const router = useRouter();
   const [selectedDomain, setSelectedDomain] = useState<string>("engineering");
   const [selectedSubEnv, setSelectedSubEnv] = useState<number>(1);
+  const [customProblem, setCustomProblem] = useState<any>(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("praxis_custom_company_problems");
+      if (stored) {
+        const list = JSON.parse(stored);
+        if (list && list.length > 0) {
+          setCustomProblem(list[0]);
+          return;
+        }
+      }
+      // Pre-seed default realistic custom company problem for instant demo
+      const defaultProblem = {
+        id: "nordic-3ds-demo",
+        companyName: "Nordic Goods",
+        rawTitle: "Mobile 3DS Checkout Timeout",
+        domain: "engineering",
+        redefinedTitle: "Nordic Goods // Mobile 3DS Handshake Deadlock",
+        incidentOverview: "During peak mobile checkout, iOS Safari shoppers get stuck on blank 3D Secure modal handshakes. The payment gateway webhook never fires, thread saturation reaches 98.4%, and 42,000 active sessions are dropped. Estimated revenue exposure: $380,000.",
+        blastRadius: "42,000 active sessions // $380K revenue risk",
+        subEnvironments: [
+          {
+            subEnv: 1,
+            title: "01 — Live Infrastructure & Telemetry Triage",
+            envType: "Remote Linux Terminal",
+            problemStatement: "Inspect aura-prod-app-04 via SSH, grep system logs for 3DS gateway timeouts, and identify thread starvation.",
+          }
+        ],
+        observerPersonaPrompt: "You are the Lead SRE observing this candidate solving Nordic Goods' Mobile 3DS outage. Evaluate their structured debugging and tool utilization.",
+      };
+      setCustomProblem(defaultProblem);
+      localStorage.setItem("praxis_custom_company_problems", JSON.stringify([defaultProblem]));
+      localStorage.setItem("praxis_active_custom_problem", JSON.stringify(defaultProblem));
+    } catch {}
+  }, []);
 
   const activeScopeDef = SCOPE_DEFINITIONS[selectedDomain] || SCOPE_DEFINITIONS.engineering;
 
   const handleLaunch = (domainId: string, subEnvNum: number = 1) => {
     router.push(`/seeker/dashboard?domain=${domainId}&subEnv=${subEnvNum}`);
+  };
+
+  const handleLaunchCompanyProblem = (prob: any) => {
+    try {
+      localStorage.setItem("praxis_active_custom_problem", JSON.stringify(prob));
+    } catch {}
+    router.push(`/simulation/custom-${prob.id || "comp"}?domain=${prob.domain || "engineering"}&subEnv=1&customProblem=1&skin=ide`);
   };
 
   return (
@@ -109,6 +152,69 @@ export default function SelectDomainPage() {
             Select any of the 7 professional scopes. Each scope contains 3 dedicated, fully interactive sub-environments with authentic software tools, real data, and real-time 3D observer telemetry.
           </p>
         </div>
+
+        {/* Featured Live Company-Submitted Challenge Card */}
+        {customProblem && (
+          <div
+            style={{
+              background: "linear-gradient(135deg, rgba(0, 255, 65, 0.08) 0%, rgba(10, 15, 29, 0.95) 100%)",
+              border: "1.5px solid #00ff41",
+              borderRadius: 12,
+              padding: "20px 24px",
+              marginBottom: 28,
+              boxShadow: "0 0 30px rgba(0, 255, 65, 0.15)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 24,
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 280 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <span style={{ fontSize: 10, padding: "3px 8px", background: "#00ff41", color: "#000", fontWeight: 900, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "1px" }}>
+                  ⚡ LIVE COMPANY BOUNTY // AI PROCEDURALLY MUTATED
+                </span>
+                <span style={{ fontSize: 11, color: "#00ff41", fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>
+                  {customProblem.companyName || "Nordic Goods"}
+                </span>
+                {customProblem.blastRadius && (
+                  <span style={{ fontSize: 10, padding: "2px 8px", border: "1px solid rgba(0,255,65,0.4)", color: "#a1a1aa", fontFamily: "'JetBrains Mono', monospace" }}>
+                    {customProblem.blastRadius}
+                  </span>
+                )}
+              </div>
+              <h2 style={{ fontSize: 18, fontWeight: 900, color: "#fff", margin: "0 0 6px", fontFamily: "'JetBrains Mono', monospace" }}>
+                {customProblem.redefinedTitle || customProblem.rawTitle}
+              </h2>
+              <p style={{ fontSize: 13, color: "#94a3b8", margin: 0, lineHeight: 1.5, maxWidth: 800 }}>
+                {customProblem.incidentOverview}
+              </p>
+            </div>
+
+            <button
+              onClick={() => handleLaunchCompanyProblem(customProblem)}
+              style={{
+                padding: "14px 28px",
+                background: "#00ff41",
+                color: "#080c14",
+                fontWeight: 900,
+                fontSize: 13,
+                borderRadius: 6,
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "'JetBrains Mono', monospace",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                boxShadow: "0 0 20px rgba(0,255,65,0.4)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              LAUNCH COMPANY CHALLENGE ▶
+            </button>
+          </div>
+        )}
 
         {/* 7 Domain Cards Grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 28 }}>
