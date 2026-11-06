@@ -23,6 +23,7 @@ export default function ProctoringHUD({
   const [showQrModal, setShowQrModal] = useState<boolean>(false);
   const [frontCamActive, setFrontCamActive] = useState<boolean>(false);
   const [phoneCamActive, setPhoneCamActive] = useState<boolean>(false);
+  const [isWebRtcConnected, setIsWebRtcConnected] = useState<boolean>(false);
   const [phonePreviewUrl, setPhonePreviewUrl] = useState<string | null>(null);
   const [lastHeartbeatTime, setLastHeartbeatTime] = useState<number>(Date.now());
   const [simulatedAnomalyActive, setSimulatedAnomalyActive] = useState<boolean>(false);
@@ -46,6 +47,7 @@ export default function ProctoringHUD({
   });
 
   const frontVideoRef = useRef<HTMLVideoElement | null>(null);
+  const phoneVideoRef = useRef<HTMLVideoElement | null>(null);
   const trackerRef = useRef<InBrowserProctorTracker | null>(null);
 
   // 1. Initialize Frontal Webcam & In-Browser Tracker
@@ -101,7 +103,57 @@ export default function ProctoringHUD({
     };
   }, [onAnomalyDetected]);
 
-  // 2. Listen for Smartphone 360° Stream (BroadcastChannel + LocalStorage Bridge)
+  // 2. Initialize WebRTC Host Peer for Direct Smartphone Video Stream
+  useEffect(() => {
+    let peerInstance: any = null;
+
+    async function initHostPeer() {
+      try {
+        const { default: Peer } = await import("peerjs");
+        const cleanSessionId = sessionId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 24);
+        const hostPeerId = `praxis-host-${cleanSessionId}`;
+
+        const peer = new Peer(hostPeerId, {
+          debug: 1,
+          config: {
+            iceServers: [
+              { urls: "stun:stun.l.google.com:19302" },
+              { urls: "stun:stun1.l.google.com:19302" },
+            ],
+          },
+        });
+        peerInstance = peer;
+
+        peer.on("call", (call) => {
+          call.answer(); // Answer incoming phone call
+          call.on("stream", (remoteStream) => {
+            setPhoneCamActive(true);
+            setIsWebRtcConnected(true);
+            setLastHeartbeatTime(Date.now());
+            if (phoneVideoRef.current) {
+              phoneVideoRef.current.srcObject = remoteStream;
+              phoneVideoRef.current.play().catch(() => {});
+            }
+          });
+          call.on("close", () => {
+            setIsWebRtcConnected(false);
+          });
+        });
+      } catch (err) {
+        console.warn("[ProctoringHUD] PeerJS host init fallback:", err);
+      }
+    }
+
+    initHostPeer();
+
+    return () => {
+      if (peerInstance) {
+        peerInstance.destroy();
+      }
+    };
+  }, [sessionId]);
+
+  // 3. Listen for Smartphone 360° Stream (Cloud HTTP Relay + BroadcastChannel + LocalStorage)
   useEffect(() => {
     let channel: BroadcastChannel | null = null;
     try {
@@ -115,8 +167,21 @@ export default function ProctoringHUD({
       };
     } catch {}
 
-    const interval = setInterval(() => {
-      // LocalStorage fallback for separate browser processes
+    const interval = setInterval(async () => {
+      // 1. Cloud HTTP Relay polling (works across mobile cellular & external network)
+      try {
+        const res = await fetch(`/api/proctor/stream?sessionId=${encodeURIComponent(sessionId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.connected && data.previewUrl) {
+            setPhoneCamActive(true);
+            setLastHeartbeatTime(Date.now());
+            setPhonePreviewUrl(data.previewUrl);
+          }
+        }
+      } catch {}
+
+      // 2. LocalStorage fallback for separate browser tabs on same machine
       if (typeof window !== "undefined") {
         try {
           const item = localStorage.getItem(`praxis_proctor_phone_${sessionId}`);
@@ -131,17 +196,17 @@ export default function ProctoringHUD({
         } catch {}
       }
 
-      // Heartbeat timeout check (45s grace period)
-      if (Date.now() - lastHeartbeatTime > 45000 && phoneCamActive) {
+      // Heartbeat timeout check (18s grace period)
+      if (Date.now() - lastHeartbeatTime > 18000 && phoneCamActive && !isWebRtcConnected) {
         setPhoneCamActive(false);
       }
-    }, 1000);
+    }, 500);
 
     return () => {
       channel?.close();
       clearInterval(interval);
     };
-  }, [sessionId, lastHeartbeatTime, phoneCamActive]);
+  }, [sessionId, lastHeartbeatTime, phoneCamActive, isWebRtcConnected]);
 
   // 3. Demo Shortcuts: Ctrl+Shift+T (Simulate Cheat) & Ctrl+Shift+X (Bypass)
   const triggerSimulatedCheat = useCallback(() => {
@@ -186,10 +251,18 @@ export default function ProctoringHUD({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [triggerSimulatedCheat]);
 
-  const phonePairUrl =
+  const isLocalhost =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+  const liveProductionUrl = `https://praxis-iota-puce.vercel.app/proctor/phone/${sessionId}`;
+  const localUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/proctor/phone/${sessionId}`
-      : `https://praxis-iota-puce.vercel.app/proctor/phone/${sessionId}`;
+      : liveProductionUrl;
+
+  // If local, QR code points to production so physical smartphones can access it without LAN config
+  const phonePairUrl = isLocalhost ? liveProductionUrl : localUrl;
 
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
     phonePairUrl
@@ -363,13 +436,30 @@ export default function ProctoringHUD({
                     justifyContent: "center",
                   }}
                 >
-                  {phonePreviewUrl ? (
+                  {/* WebRTC Video Element for Direct Smooth 30 FPS Stream */}
+                  <video
+                    ref={phoneVideoRef}
+                    playsInline
+                    autoPlay
+                    muted
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: isWebRtcConnected ? "block" : "none",
+                    }}
+                  />
+
+                  {/* Cloud Relay & LocalStorage Snapshot Image Stream */}
+                  {!isWebRtcConnected && phonePreviewUrl ? (
                     <img
                       src={phonePreviewUrl}
                       alt="Rear 360° Feed"
                       style={{ width: "100%", height: "100%", objectFit: "cover" }}
                     />
-                  ) : (
+                  ) : null}
+
+                  {!phoneCamActive && !phonePreviewUrl && !isWebRtcConnected && (
                     <div style={{ textAlign: "center", padding: 6 }}>
                       <span style={{ fontSize: 16 }}>📱</span>
                       <div style={{ fontSize: 8, color: "#64748b", marginTop: 2 }}>NOT PAIRED</div>
@@ -386,9 +476,27 @@ export default function ProctoringHUD({
                       padding: "1px 4px",
                       borderRadius: 2,
                       color: phoneCamActive ? "#00ff41" : "#94a3b8",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
                     }}
                   >
-                    REAR 360°
+                    {phoneCamActive && (
+                      <span
+                        style={{
+                          width: 4,
+                          height: 4,
+                          borderRadius: "50%",
+                          background: "#00ff41",
+                          boxShadow: "0 0 6px #00ff41",
+                        }}
+                      />
+                    )}
+                    {phoneCamActive
+                      ? isWebRtcConnected
+                        ? "REAR 360° (P2P)"
+                        : "REAR 360° (LIVE)"
+                      : "REAR 360°"}
                   </span>
                 </div>
               </div>

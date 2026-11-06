@@ -14,11 +14,15 @@ export default function PhoneProctorPage() {
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [wakeLockActive, setWakeLockActive] = useState<boolean>(false);
   const [fpsCount, setFpsCount] = useState<number>(15);
+  const [framesSent, setFramesSent] = useState<number>(0);
+  const [relayActive, setRelayActive] = useState<boolean>(false);
+  const [p2pConnected, setP2pConnected] = useState<boolean>(false);
 
-  // 1. Initialize rear-facing environment camera
+  // 1. Initialize rear-facing environment camera & WebRTC Peer
   useEffect(() => {
     let activeStream: MediaStream | null = null;
     let wakeLockSentinel: any = null;
+    let peerInstance: any = null;
 
     async function initCamera() {
       try {
@@ -45,6 +49,35 @@ export default function PhoneProctorPage() {
             setWakeLockActive(true);
           } catch {}
         }
+
+        // Attempt WebRTC Peer connection to desktop host
+        try {
+          const { default: Peer } = await import("peerjs");
+          const cleanSessionId = sessionId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 24);
+          const hostPeerId = `praxis-host-${cleanSessionId}`;
+          const phonePeerId = `praxis-phone-${cleanSessionId}-${Math.floor(Math.random() * 1000)}`;
+
+          const peer = new Peer(phonePeerId, {
+            debug: 1,
+            config: {
+              iceServers: [
+                { urls: "stun:stun.l.google.com:19302" },
+                { urls: "stun:stun1.l.google.com:19302" },
+              ],
+            },
+          });
+          peerInstance = peer;
+
+          peer.on("open", () => {
+            const call = peer.call(hostPeerId, stream);
+            if (call) {
+              call.on("stream", () => setP2pConnected(true));
+              call.on("close", () => setP2pConnected(false));
+            }
+          });
+        } catch (peerErr) {
+          console.warn("[PhoneProctor] PeerJS init error:", peerErr);
+        }
       } catch (err: any) {
         console.warn("[PhoneProctor] Camera access error:", err);
         setPermissionError(err.message || "Failed to access rear camera.");
@@ -60,10 +93,13 @@ export default function PhoneProctorPage() {
       if (wakeLockSentinel) {
         wakeLockSentinel.release().catch(() => {});
       }
+      if (peerInstance) {
+        peerInstance.destroy();
+      }
     };
-  }, []);
+  }, [sessionId]);
 
-  // 2. Transmit frame snapshots & heartbeat to desktop session
+  // 2. Transmit frame snapshots & heartbeat to desktop session (Cloud Relay + Local Fallback)
   useEffect(() => {
     if (!streamActive) return;
 
@@ -92,10 +128,24 @@ export default function PhoneProctorPage() {
           connected: true,
         };
 
-        // 1. BroadcastChannel (for shared origins/tabs)
+        // 1. Cloud HTTP Stream Relay (Works across separate physical devices / cellular data)
+        fetch("/api/proctor/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+          .then((res) => {
+            if (res.ok) {
+              setRelayActive(true);
+              setFramesSent((f) => f + 1);
+            }
+          })
+          .catch(() => {});
+
+        // 2. BroadcastChannel (for shared origins/tabs)
         channel?.postMessage(payload);
 
-        // 2. LocalStorage bridge
+        // 3. LocalStorage bridge
         if (typeof window !== "undefined") {
           localStorage.setItem(`praxis_proctor_phone_${sessionId}`, JSON.stringify(payload));
         }
@@ -240,16 +290,23 @@ export default function PhoneProctorPage() {
         style={{
           padding: "12px 16px",
           background: "#090d1a",
-          border: "1px solid rgba(0, 255, 65, 0.2)",
+          border: `1px solid ${relayActive || p2pConnected ? "#00ff41" : "rgba(0, 255, 65, 0.2)"}`,
           borderRadius: 6,
           textAlign: "center",
           fontSize: 11,
           color: "#94a3b8",
         }}
       >
-        SESSION: <span style={{ color: "#00ff41" }}>{sessionId.slice(0, 12)}...</span>
-        <div style={{ fontSize: 10, color: "#64748b", marginTop: 4 }}>
-          Live encrypted feed streaming to desktop anti-cheat engine. Keep this tab open.
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <span>
+            SESSION: <span style={{ color: "#00ff41" }}>{sessionId.slice(0, 12)}...</span>
+          </span>
+          <span style={{ color: relayActive || p2pConnected ? "#00ff41" : "#f59e0b", fontWeight: 700 }}>
+            {p2pConnected ? "● P2P WEBRTC (30 FPS)" : relayActive ? `● STREAMING (${framesSent} FRAMES)` : "CONNECTING..."}
+          </span>
+        </div>
+        <div style={{ fontSize: 10, color: "#64748b" }}>
+          Live 360° rear video feed streaming to desktop anti-cheat shield. Keep this tab open.
         </div>
       </div>
     </div>

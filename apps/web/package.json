@@ -27,6 +27,7 @@
     "framer-motion": "^12.38.0",
     "jsonwebtoken": "^9.0.3",
     "next": "latest",
+    "peerjs": "^1.5.5",
     "pg": "^8.20.0",
     "prisma": "^5.22.0",
     "react": "latest",
